@@ -14,7 +14,7 @@ test('AI prompt requires the supported Scratch block JSON format', () => {
     assert.match(message, /opcode、入力名、フィールド名/);
     assert.match(message, /使えるブロック一覧/);
     assert.ok(message.includes('motion_movesteps(STEPS:value<math_number NUM="10">)'));
-    assert.match(message, '[script 1] event_whenflagclicked');
+    assert.ok(message.includes('[script 1] event_whenflagclicked'));
 });
 
 test('normalizeProgram parses a JSON string and defaults to add mode', () => {
