@@ -3,7 +3,7 @@ const SYSTEM_PROMPT = "あなたは Scratch / TurboWarp のプログラミング
 const buildSystemMessage = ({blockCatalog, projectText}) => [
     SYSTEM_PROMPT,
     '',
-    '## 使えるブロック一覧 (opcode(入力名:シャドウ型))',
+    '## 使えるブロック仕様 (value<shadowType 初期値>, stack, field)',
     blockCatalog || '(不明)',
     '',
     '## 現在のスプライトのコード',
