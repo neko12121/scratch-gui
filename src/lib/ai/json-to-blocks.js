@@ -110,17 +110,26 @@ const describeToolbox = toolboxXML => {
         for (const child of Array.from(el.children)) {
             const name = child.getAttribute('name');
             if (child.nodeName === 'value') {
-                const shadow = child.getElementsByTagName('shadow')[0];
-                parts.push(`${name}${shadow ? `:${shadow.getAttribute('type')}` : ':block'}`);
+                const source = Array.from(child.children)
+                    .find(c => c.nodeName === 'shadow' || c.nodeName === 'block');
+                if (!source) {
+                    parts.push(name + ':value');
+                    continue;
+                }
+                const sourceType = source.getAttribute('type') || 'block';
+                const defaults = Array.from(source.children)
+                    .filter(c => c.nodeName === 'field')
+                    .map(field => field.getAttribute('name') + '=' + JSON.stringify(field.textContent));
+                parts.push(name + ':value<' + sourceType +
+                    (defaults.length ? ' ' + defaults.join(' ') : '') + '>');
             } else if (child.nodeName === 'field') {
-                parts.push(`field ${name}`);
+                parts.push('field ' + name + '=' + JSON.stringify(child.textContent));
             } else if (child.nodeName === 'statement') {
-                parts.push(`${name}:stack`);
+                parts.push(name + ':stack');
             }
         }
-        return parts.length ? `${type}(${parts.join(', ')})` : type;
-    })
-        .join('\n');
+        return parts.length ? type + '(' + parts.join(', ') + ')' : type;
+    }).join('\n');
 };
 
 const createEl = (doc, name) => doc.createElement(name);
