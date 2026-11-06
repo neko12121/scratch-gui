@@ -162,67 +162,76 @@ const buildStack = (doc, templates, list, warnings) => {
 
 const buildBlock = (doc, templates, spec, warnings) => {
     if (!spec || typeof spec !== 'object' || typeof spec.opcode !== 'string') {
-        warnings.push(`不正なブロック指定をスキップしました: ${JSON.stringify(spec)}`);
+        warnings.push('不正なブロック指定をスキップしました: ' + JSON.stringify(spec));
         return null;
     }
     const template = templates[spec.opcode];
-    let el;
-    if (template) {
-        el = doc.importNode(template, true);
-        el.removeAttribute('id');
-        el.removeAttribute('x');
-        el.removeAttribute('y');
-    } else {
-        el = createEl(doc, 'block');
-        el.setAttribute('type', spec.opcode);
-        warnings.push(`「${spec.opcode}」はツールボックスに見つかりません（拡張機能が必要かもしれません）`);
+    if (!template) {
+        warnings.push('「' + spec.opcode + '」は現在のツールボックスにありません。ブロックをスキップしました。');
+        return null;
     }
+
+    const el = doc.importNode(template, true);
+    el.removeAttribute('id');
+    el.removeAttribute('x');
+    el.removeAttribute('y');
 
     const findChild = (tag, name) => Array.from(el.children)
         .find(c => c.nodeName === tag && c.getAttribute('name') === name);
 
-    // Fields
+    // Only accept fields that actually exist on this toolbox block.
     const fields = spec.fields || {};
-    for (const name of Object.keys(fields)) {
-        let fieldEl = findChild('field', name);
-        if (!fieldEl) {
-            fieldEl = createEl(doc, 'field');
-            fieldEl.setAttribute('name', name);
-            el.appendChild(fieldEl);
+    if (typeof fields !== 'object' || Array.isArray(fields)) {
+        warnings.push('「' + spec.opcode + '」の fields はオブジェクトではありません。');
+    } else {
+        for (const name of Object.keys(fields)) {
+            const fieldEl = findChild('field', name);
+            if (!fieldEl) {
+                warnings.push('「' + spec.opcode + '」に field「' + name + '」はありません。無視しました。');
+                continue;
+            }
+            setFieldText(fieldEl, fields[name]);
         }
-        setFieldText(fieldEl, fields[name]);
     }
 
-    // Inputs
+    // Only accept value/statement inputs that are present in the real block template.
     const inputs = spec.inputs || {};
+    if (typeof inputs !== 'object' || Array.isArray(inputs)) {
+        warnings.push('「' + spec.opcode + '」の inputs はオブジェクトではありません。');
+        return el;
+    }
     for (const name of Object.keys(inputs)) {
         const value = inputs[name];
-        if (Array.isArray(value) || STATEMENT_INPUT.test(name)) {
-            const stackList = Array.isArray(value) ? value : [value];
+        if (STATEMENT_INPUT.test(name)) {
             let stmt = findChild('statement', name);
-            if (stmt) el.removeChild(stmt);
+            if (!stmt) {
+                warnings.push('「' + spec.opcode + '」に stack 入力「' + name + '」はありません。無視しました。');
+                continue;
+            }
+            const stackList = Array.isArray(value) ? value : [value];
+            el.removeChild(stmt);
             stmt = createEl(doc, 'statement');
             stmt.setAttribute('name', name);
             const stack = buildStack(doc, templates, stackList, warnings);
-            if (stack) {
-                stmt.appendChild(stack);
-                el.appendChild(stmt);
-            }
+            if (stack) stmt.appendChild(stack);
+            el.appendChild(stmt);
             continue;
         }
 
-        let valueEl = findChild('value', name);
-        if (!valueEl) {
-            valueEl = createEl(doc, 'value');
-            valueEl.setAttribute('name', name);
-            el.appendChild(valueEl);
+        if (Array.isArray(value)) {
+            warnings.push('「' + spec.opcode + '」の value 入力「' + name + '」に配列は使えません。無視しました。');
+            continue;
         }
-        // Remove any non-shadow block that came from the toolbox template
-        for (const child of Array.from(valueEl.children)) {
-            if (child.nodeName === 'block') valueEl.removeChild(child);
+        const valueEl = findChild('value', name);
+        if (!valueEl) {
+            warnings.push('「' + spec.opcode + '」に value 入力「' + name + '」はありません。無視しました。');
+            continue;
         }
 
         if (value !== null && typeof value === 'object') {
+            for (const child of Array.from(valueEl.children)) {
+                if (child.nodeName === 'block') valueEl.removeChild(child);
+            }
             const child = buildBlock(doc, templates, value, warnings);
             if (child) valueEl.appendChild(child);
         } else {
@@ -230,8 +239,6 @@ const buildBlock = (doc, templates, spec, warnings) => {
             if (shadow) {
                 let field = Array.from(shadow.children).find(c => c.nodeName === 'field');
                 if (!field) {
-                    // Menu shadows in the toolbox often omit the field; in Scratch the
-                    // menu field name matches the input name (KEY_OPTION, TOUCHINGOBJECTMENU, ...)
                     field = createEl(doc, 'field');
                     const shadowType = shadow.getAttribute('type');
                     field.setAttribute('name', SHADOW_FIELD_NAMES[shadowType] || name);
@@ -239,14 +246,7 @@ const buildBlock = (doc, templates, spec, warnings) => {
                 }
                 setFieldText(field, value);
             } else {
-                // No shadow (e.g. boolean slot): make a text shadow
-                const newShadow = createEl(doc, 'shadow');
-                newShadow.setAttribute('type', 'text');
-                const field = createEl(doc, 'field');
-                field.setAttribute('name', 'TEXT');
-                field.textContent = String(value);
-                newShadow.appendChild(field);
-                valueEl.appendChild(newShadow);
+                warnings.push('「' + spec.opcode + '」の入力「' + name + '」はブロックを必要とします。数値・文字列ではなく opcode オブジェクトを指定してください。');
             }
         }
     }
