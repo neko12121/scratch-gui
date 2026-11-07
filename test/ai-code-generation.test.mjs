@@ -52,3 +52,37 @@ test('normalizeProgram rejects payloads without a scripts array', () => {
         /"scripts" 配列が見つかりません/
     );
 });
+
+import {splitBareJsonSegments} from '../src/lib/ai/response-parser.js';
+
+test('response parser recognizes an unfenced Scratch block array inside assistant text', () => {
+    const response = 'りんごのプログラムです。\\n[{"opcode":"event_whenflagclicked"}]\\nこれで完成です。';
+    const segments = splitBareJsonSegments(response);
+
+    assert.equal(segments.length, 3);
+    assert.equal(segments[0].type, 'text');
+    assert.equal(segments[1].type, 'code');
+    assert.equal(segments[1].lang, 'scratch-blocks');
+    assert.deepEqual(JSON.parse(segments[1].content), [
+        {opcode: 'event_whenflagclicked'}
+    ]);
+    assert.equal(segments[2].type, 'text');
+});
+
+test('response parser recognizes an unfenced scripts object', () => {
+    const response = 'コード：\\n{"mode":"add","scripts":[[{"opcode":"event_whenflagclicked"}]]}';
+    const segments = splitBareJsonSegments(response);
+
+    assert.equal(segments.length, 2);
+    assert.equal(segments[1].lang, 'scratch-blocks');
+    assert.equal(JSON.parse(segments[1].content).scripts.length, 1);
+});
+
+test('response parser leaves ordinary JSON and explanatory text untouched', () => {
+    const response = '配列の例：[1, 2, 3]\\nこれは通常の説明です。';
+    const segments = splitBareJsonSegments(response);
+
+    assert.equal(segments.length, 1);
+    assert.equal(segments[0].type, 'text');
+    assert.equal(segments[0].content, response);
+});
