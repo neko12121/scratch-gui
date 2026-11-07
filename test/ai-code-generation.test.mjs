@@ -54,7 +54,6 @@ test('normalizeProgram rejects payloads without a scripts array', () => {
     );
 });
 
-
 test('response parser recognizes an unfenced Scratch block array inside assistant text', () => {
     const response = 'りんごのプログラムです。\n[{"opcode":"event_whenflagclicked"}]\nこれで完成です。';
     const segments = splitBareJsonSegments(response);
