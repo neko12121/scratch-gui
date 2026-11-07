@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {buildSystemMessage} from '../src/lib/ai/prompts.js';
 import {normalizeProgram} from '../src/lib/ai/json-to-blocks.js';
+import {splitBareJsonSegments} from '../src/lib/ai/response-parser.js';
 
 test('AI prompt requires the supported Scratch block JSON format', () => {
     const message = buildSystemMessage({
@@ -53,7 +54,6 @@ test('normalizeProgram rejects payloads without a scripts array', () => {
     );
 });
 
-import {splitBareJsonSegments} from '../src/lib/ai/response-parser.js';
 
 test('response parser recognizes an unfenced Scratch block array inside assistant text', () => {
     const response = 'りんごのプログラムです。\n[{"opcode":"event_whenflagclicked"}]\nこれで完成です。';
