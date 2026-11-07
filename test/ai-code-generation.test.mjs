@@ -56,7 +56,7 @@ test('normalizeProgram rejects payloads without a scripts array', () => {
 import {splitBareJsonSegments} from '../src/lib/ai/response-parser.js';
 
 test('response parser recognizes an unfenced Scratch block array inside assistant text', () => {
-    const response = 'りんごのプログラムです。\\n[{"opcode":"event_whenflagclicked"}]\\nこれで完成です。';
+    const response = 'りんごのプログラムです。\n[{"opcode":"event_whenflagclicked"}]\nこれで完成です。';
     const segments = splitBareJsonSegments(response);
 
     assert.equal(segments.length, 3);
@@ -70,7 +70,7 @@ test('response parser recognizes an unfenced Scratch block array inside assistan
 });
 
 test('response parser recognizes an unfenced scripts object', () => {
-    const response = 'コード：\\n{"mode":"add","scripts":[[{"opcode":"event_whenflagclicked"}]]}';
+    const response = 'コード：\n{"mode":"add","scripts":[[{"opcode":"event_whenflagclicked"}]]}';
     const segments = splitBareJsonSegments(response);
 
     assert.equal(segments.length, 2);
@@ -79,10 +79,19 @@ test('response parser recognizes an unfenced scripts object', () => {
 });
 
 test('response parser leaves ordinary JSON and explanatory text untouched', () => {
-    const response = '配列の例：[1, 2, 3]\\nこれは通常の説明です。';
+    const response = '配列の例：[1, 2, 3]\nこれは通常の説明です。';
     const segments = splitBareJsonSegments(response);
 
     assert.equal(segments.length, 1);
     assert.equal(segments[0].type, 'text');
     assert.equal(segments[0].content, response);
+});
+
+test('response parser handles escaped quotes and braces inside JSON strings', () => {
+    const response = 'JSON: {"scripts":[[{"opcode":"looks_say","inputs":{"MESSAGE":"say \\"hello\\" } safely"}}]]}';
+    const segments = splitBareJsonSegments(response);
+
+    assert.equal(segments.length, 2);
+    assert.equal(segments[1].lang, 'scratch-blocks');
+    assert.equal(JSON.parse(segments[1].content).scripts[0][0].inputs.MESSAGE, 'say "hello" } safely');
 });
