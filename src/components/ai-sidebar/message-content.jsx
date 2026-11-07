@@ -4,6 +4,7 @@ import React from 'react';
 
 import BlockPreview from './block-preview.jsx';
 import {normalizeProgram, programToXML} from '../../lib/ai/json-to-blocks.js';
+import {splitBareJsonSegments} from '../../lib/ai/response-parser.js';
 import styles from './ai-sidebar.css';
 
 const FENCE = /```([\w-]*)[^\n]*\n([\s\S]*?)```/g;
@@ -15,11 +16,18 @@ const splitSegments = text => {
     let match;
     FENCE.lastIndex = 0;
     while ((match = FENCE.exec(text)) !== null) {
-        if (match.index > last) segments.push({type: 'text', content: text.slice(last, match.index)});
+        if (match.index > last) {
+            segments.push(...splitBareJsonSegments(text.slice(last, match.index)));
+        }
         segments.push({type: 'code', lang: match[1], content: match[2]});
         last = FENCE.lastIndex;
     }
-    if (last < text.length) segments.push({type: 'text', content: text.slice(last)});
+    if (last < text.length) {
+        segments.push(...splitBareJsonSegments(text.slice(last)));
+    }
+    if (segments.length === 0) {
+        segments.push({type: 'text', content: text});
+    }
     return segments;
 };
 
