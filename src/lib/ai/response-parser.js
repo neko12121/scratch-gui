@@ -10,7 +10,7 @@ const findJsonEnd = (text, start) => {
         if (inString) {
             if (escaped) {
                 escaped = false;
-            } else if (char === '\\\\') {
+            } else if (char === '\\') {
                 escaped = true;
             } else if (char === '"') {
                 inString = false;
