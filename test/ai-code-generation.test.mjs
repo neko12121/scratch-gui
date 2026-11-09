@@ -97,3 +97,23 @@ test('response parser handles escaped quotes and braces inside JSON strings', ()
     assert.equal(segments[1].lang, 'scratch-blocks');
     assert.equal(JSON.parse(segments[1].content).scripts[0][0].inputs.MESSAGE, 'say "hello" } safely');
 });
+
+
+test('response parser recognizes an unfenced combined project JSON payload', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#ff0000"/></svg>';
+    const response = '生成した素材：\\n' + JSON.stringify({
+        costumes: [{name: '正面', svg: svg}],
+        sprites: [],
+        backdrops: [],
+        scripts: [[{opcode: 'event_whenflagclicked'}]]
+    });
+    const segments = splitBareJsonSegments(response);
+    assert.equal(segments.length, 2);
+    assert.equal(segments[1].lang, 'scratch-project-json');
+});
+
+test('response parser keeps block-only JSON in the Scratch blocks format', () => {
+    const response = 'コード：\\n{"scripts":[[{"opcode":"event_whenflagclicked"}]]}';
+    const segments = splitBareJsonSegments(response);
+    assert.equal(segments[1].lang, 'scratch-blocks');
+});
