@@ -80,6 +80,7 @@ const AISidebarComponent = props => {
         onInsert,
         onOpenSpriteLibrary,
         onAddCostume,
+        onApplyProject,
         onKeyDown,
         onQuickPrompt,
         onSend,
@@ -164,6 +165,7 @@ const AISidebarComponent = props => {
                                     toolboxXML={toolboxXML}
                                     onInsert={onInsert}
                                     onAddCostume={onAddCostume}
+                                    onApplyProject={onApplyProject}
                                 />
                             )}
                         </div>
@@ -191,8 +193,18 @@ const AISidebarComponent = props => {
                     <button
                         className={styles.chip}
                         disabled={busy}
-                        onClick={() => onQuickPrompt('今選択しているスプライトに使える、シンプルなオリジナルSVGコスチュームを作ってください。回答は必ず scratch-costume-json のコードフェンスで囲んだJSONだけにし、形式は {"name":"コスチューム名","svg":"<svg xmlns=...>...</svg>"} としてください。SVGは自己完結した図形だけを使い、script、foreignObject、外部URL、画像埋め込みは使わないでください。')}
-                    >{'AIでコスチュームを作る'}</button>
+                        onClick={() => onQuickPrompt('今選択しているスプライト用に、見た目やポーズが異なる3つのコスチュームを作ってください。回答は scratch-project-json のコードフェンスで、costumes 配列に name と svg を3個入れ、sprites/backdrops/scripts は空配列にしてください。SVGは自己完結した安全な図形だけを使ってください。')}
+                    >{'複数コスチューム生成'}</button>
+                    <button
+                        className={styles.chip}
+                        disabled={busy}
+                        onClick={() => onQuickPrompt('Scratchのステージに使うオリジナル背景を1〜2個作ってください。回答は scratch-project-json のコードフェンスで、backdrops 配列に name と svg を入れ、costumes/sprites/scripts は空配列にしてください。ステージ全体を覆う横長の風景にしてください。')}
+                    >{'背景を自動生成'}</button>
+                    <button
+                        className={styles.chip}
+                        disabled={busy}
+                        onClick={() => onQuickPrompt('簡単なゲームを作るため、素材とブロックを一括生成してください。回答は scratch-project-json のコードフェンス1つだけにしてください。costumesには現在選択中のスプライト用素材、spritesには追加で必要なスプライトと各2個程度のcostumes、backdropsには背景を1個、scriptsには現在選択中のスプライトに追加する動作ブロックを入れてください。scriptsのopcode/inputs/fieldsは使えるブロック一覧に完全に従い、変数が必要なら最小限にしてください。')}
+                    >{'ゲームを一括生成'}</button>
                     <button
                         className={styles.chip}
                         disabled={busy}
@@ -253,6 +265,7 @@ AISidebarComponent.propTypes = {
     onInsert: PropTypes.func,
     onOpenSpriteLibrary: PropTypes.func,
     onAddCostume: PropTypes.func,
+    onApplyProject: PropTypes.func,
     onKeyDown: PropTypes.func,
     onQuickPrompt: PropTypes.func,
     onSend: PropTypes.func,
