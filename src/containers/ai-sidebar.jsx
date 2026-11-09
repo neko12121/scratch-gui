@@ -296,7 +296,7 @@ class AISidebar extends React.Component {
                 const originalTargetId = vm.editingTarget ? vm.editingTarget.id : null;
                 try {
                     for (const group of scriptGroups) {
-                        if (vm.editingTarget && vm.editingTarget.id !== group.id) {
+                        if (!vm.editingTarget || vm.editingTarget.id !== group.id) {
                             // VM emits workspaceUpdate synchronously when the editing target changes.
                             vm.setEditingTarget(group.id);
                         }
