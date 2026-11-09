@@ -5,6 +5,7 @@ import React from 'react';
 import BlockPreview from './block-preview.jsx';
 import {normalizeProgram, programToXML} from '../../lib/ai/json-to-blocks.js';
 import {splitBareJsonSegments} from '../../lib/ai/response-parser.js';
+import {normalizeProjectSpec} from '../../lib/ai/project-spec.js';
 import styles from './ai-sidebar.css';
 
 const FENCE = /```([\w-]*)[^\n]*\n([\s\S]*?)```/g;
@@ -103,6 +104,40 @@ const describeProgram = program => {
     return lines.join('\n');
 };
 
+const ProjectSegment = ({content, onApplyProject}) => {
+    let project;
+    try {
+        project = normalizeProjectSpec(content);
+    } catch (e) {
+        return (
+            <div className={styles.codeError}>
+                {`プロジェクトJSONを読み込めません: ${e.message}`}
+                <pre className={styles.code}>{content}</pre>
+            </div>
+        );
+    }
+    const costumeCount = project.costumes.length;
+    const spriteCostumeCount = project.sprites.reduce((sum, sprite) =>
+        sum + sprite.costumes.length, 0);
+    const scriptCount = project.scripts.length;
+    return (
+        <div className={styles.blocksCard}>
+            <div className={styles.text}>
+                {'生成内容'}
+                <div>{`現在のスプライトのコスチューム: ${costumeCount}個`}</div>
+                <div>{`新しいスプライト: ${project.sprites.length}個（コスチューム合計 ${spriteCostumeCount}個）`}</div>
+                <div>{`ステージ背景: ${project.backdrops.length}個`}</div>
+                <div>{`ブロックスクリプト: ${scriptCount}個`}</div>
+            </div>
+            <div className={styles.blocksActions}>
+                <button className={styles.primaryButton} onClick={() => onApplyProject(project)}>
+                    {'素材とブロックを追加'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const CostumeSegment = ({content, onAddCostume}) => {
     let data;
     try {
@@ -174,14 +209,15 @@ BlocksSegment.propTypes = {
     toolboxXML: PropTypes.string
 };
 
-const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) => {
+const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, onApplyProject, streaming}) => {
     // While streaming, hide an unfinished scratch-blocks fence
     let displayText = text;
     let pendingBlocks = false;
     if (streaming) {
         const openBlocks = text.lastIndexOf('```scratch-blocks');
         const openCostume = text.lastIndexOf('```scratch-costume-json');
-        const open = Math.max(openBlocks, openCostume);
+        const openProject = text.lastIndexOf('```scratch-project-json');
+        const open = Math.max(openBlocks, openCostume, openProject);
         if (open !== -1 && text.indexOf('```', open + 3) === -1) {
             displayText = text.slice(0, open);
             pendingBlocks = true;
@@ -192,6 +228,9 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) =
         <div>
             {segments.map((seg, i) => {
                 if (seg.type === 'text') return renderText(seg.content, i);
+                if (seg.lang === 'scratch-project-json') {
+                    return <ProjectSegment content={seg.content} key={i} onApplyProject={onApplyProject} />;
+                }
                 if (seg.lang === 'scratch-costume-json') {
                     return <CostumeSegment content={seg.content} key={i} onAddCostume={onAddCostume} />;
                 }
@@ -220,6 +259,7 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) =
 MessageContent.propTypes = {
     onInsert: PropTypes.func,
     onAddCostume: PropTypes.func,
+    onApplyProject: PropTypes.func,
     streaming: PropTypes.bool,
     text: PropTypes.string,
     toolboxXML: PropTypes.string
