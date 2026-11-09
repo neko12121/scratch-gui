@@ -10,6 +10,7 @@ import {chat, loadSettings, saveSettings} from '../lib/ai/ai-client.js';
 import {targetToText} from '../lib/ai/script-to-text.js';
 import {describeToolbox, insertProgram} from '../lib/ai/json-to-blocks.js';
 import {buildSystemMessage} from '../lib/ai/prompts.js';
+import {costumeUpload} from '../lib/file-uploader.js';
 import {activateTab, BLOCKS_TAB_INDEX} from '../reducers/editor-tab';
 import {openSpriteLibrary} from '../reducers/modals';
 
@@ -36,6 +37,7 @@ class AISidebar extends React.Component {
             'handleClear',
             'handleInsert',
             'handleOpenSpriteLibrary',
+            'handleAddCostume',
             'setMessagesRef'
         ]);
         let isOpen = true;
@@ -165,6 +167,38 @@ class AISidebar extends React.Component {
     handleOpenSpriteLibrary () {
         this.props.onOpenSpriteLibrary();
     }
+    handleAddCostume (svg, name) {
+        const vm = this.props.vm;
+        const target = vm.editingTarget;
+        if (!target) {
+            this.setState({error: 'コスチュームを追加する対象がありません。'});
+            return;
+        }
+        if (typeof svg !== 'string' || svg.length > 500000 ||
+            !/^\\s*<svg(?:\\s|>)/i.test(svg)) {
+            this.setState({error: 'SVG形式ではないか、サイズが大きすぎます（最大500KB）。'});
+            return;
+        }
+        const targetId = target.id;
+        try {
+            const bytes = new TextEncoder().encode(svg);
+            costumeUpload(bytes.buffer, 'image/svg+xml', vm, costumes => {
+                try {
+                    const costume = costumes[0];
+                    costume.name = (name || 'AI costume').slice(0, 80);
+                    vm.addCostume(costume.md5, costume, targetId);
+                    this.setState({
+                        error: '',
+                        notice: `コスチューム「${costume.name}」を追加しました。`
+                    });
+                } catch (e) {
+                    this.setState({error: `コスチュームを追加できませんでした: ${e.message}`});
+                }
+            }, error => this.setState({error: `SVGを読み込めませんでした: ${String(error)}`}));
+        } catch (e) {
+            this.setState({error: `SVGを処理できませんでした: ${e.message}`});
+        }
+    }
     handleInsert (program, mode) {
         const ScratchBlocks = AddonHooks.blockly;
         const workspace = AddonHooks.blocklyWorkspace;
@@ -218,6 +252,7 @@ class AISidebar extends React.Component {
                 onClear={this.handleClear}
                 onInsert={this.handleInsert}
                 onOpenSpriteLibrary={this.handleOpenSpriteLibrary}
+                onAddCostume={this.handleAddCostume}
                 onKeyDown={this.handleKeyDown}
                 onQuickPrompt={this.handleQuickPrompt}
                 onSend={this.handleSend}
