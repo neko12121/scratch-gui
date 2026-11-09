@@ -204,7 +204,7 @@ const AISidebarComponent = props => {
                     <button
                         className={styles.chip}
                         disabled={busy}
-                        onClick={() => onQuickPrompt('簡単なゲームを作るため、素材とブロックを一括生成してください。回答は scratch-project-json のコードフェンス1つだけにしてください。costumesには現在選択中のスプライト用素材、spritesには追加で必要なスプライトと各2個程度のcostumes、backdropsには背景を1個、scriptsには現在選択中のスプライトに追加する動作ブロックを入れてください。scriptsのopcode/inputs/fieldsは使えるブロック一覧に完全に従い、変数が必要なら最小限にしてください。')}
+                        onClick={() => onQuickPrompt('簡単なゲームを作るため、素材とブロックを一括生成してください。回答は scratch-project-json のコードフェンス1つだけにしてください。costumesには現在選択中のスプライト用素材、spritesには追加で必要なスプライトと各2個程度のcostumes、backdropsには背景を1個、scriptsには現在選択中のスプライト用ブロックを入れ、各sprites項目にもそのスプライト専用のscriptsを入れてください。新規スプライトの動作コードも作成し、opcode/inputs/fieldsは使えるブロック一覧に完全に従い、変数が必要なら最小限にしてください。')}
                     >{'ゲームを一括生成'}</button>
                     <button
                         className={styles.chip}
