@@ -11,6 +11,7 @@ import {targetToText} from '../lib/ai/script-to-text.js';
 import {describeToolbox, insertProgram} from '../lib/ai/json-to-blocks.js';
 import {buildSystemMessage} from '../lib/ai/prompts.js';
 import {activateTab, BLOCKS_TAB_INDEX} from '../reducers/editor-tab';
+import {openSpriteLibrary} from '../reducers/modals';
 
 const OPEN_KEY = 'tw:ai-sidebar:open';
 const MAX_HISTORY = 16;
@@ -34,6 +35,7 @@ class AISidebar extends React.Component {
             'handleStop',
             'handleClear',
             'handleInsert',
+            'handleOpenSpriteLibrary',
             'setMessagesRef'
         ]);
         let isOpen = true;
@@ -160,6 +162,9 @@ class AISidebar extends React.Component {
             this.setState({busy: false, streamingText: ''});
         }
     }
+    handleOpenSpriteLibrary () {
+        this.props.onOpenSpriteLibrary();
+    }
     handleInsert (program, mode) {
         const ScratchBlocks = AddonHooks.blockly;
         const workspace = AddonHooks.blocklyWorkspace;
@@ -212,6 +217,7 @@ class AISidebar extends React.Component {
                 onChangeSettings={this.handleChangeSettings}
                 onClear={this.handleClear}
                 onInsert={this.handleInsert}
+                onOpenSpriteLibrary={this.handleOpenSpriteLibrary}
                 onKeyDown={this.handleKeyDown}
                 onQuickPrompt={this.handleQuickPrompt}
                 onSend={this.handleSend}
@@ -226,6 +232,7 @@ class AISidebar extends React.Component {
 AISidebar.propTypes = {
     activeTabIndex: PropTypes.number,
     onActivateBlocksTab: PropTypes.func,
+    onOpenSpriteLibrary: PropTypes.func,
     toolboxXML: PropTypes.string,
     vm: PropTypes.instanceOf(VM).isRequired
 };
@@ -238,7 +245,8 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-    onActivateBlocksTab: () => dispatch(activateTab(BLOCKS_TAB_INDEX))
+    onActivateBlocksTab: () => dispatch(activateTab(BLOCKS_TAB_INDEX)),
+    onOpenSpriteLibrary: () => dispatch(openSpriteLibrary())
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AISidebar);
