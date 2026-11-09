@@ -119,7 +119,8 @@ const ProjectSegment = ({content, onApplyProject}) => {
     const costumeCount = project.costumes.length;
     const spriteCostumeCount = project.sprites.reduce((sum, sprite) =>
         sum + sprite.costumes.length, 0);
-    const scriptCount = project.scripts.length + project.sprites.reduce((sum, sprite) =>\n        sum + sprite.scripts.length, 0);
+    const scriptCount = project.scripts.length + project.sprites.reduce((sum, sprite) =>
+        sum + sprite.scripts.length, 0);
     return (
         <div className={styles.blocksCard}>
             <div className={styles.text}>
