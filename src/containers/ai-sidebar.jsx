@@ -206,22 +206,24 @@ class AISidebar extends React.Component {
         if (this.applyingProject) return;
         this.applyingProject = true;
         const vm = this.props.vm;
-        const counts = {costumes: 0, sprites: 0, backdrops: 0, scripts: 0};
+        const counts = {costumes: 0, spriteCostumes: 0, sprites: 0, backdrops: 0, scripts: 0};
+        const warnings = [];
         try {
             const project = normalizeProjectSpec(input);
             const activeTarget = vm.editingTarget;
+            const spriteScriptCount = project.sprites.reduce((sum, sprite) =>
+                sum + sprite.scripts.length, 0);
+            const hasScripts = project.scripts.length > 0 || spriteScriptCount > 0;
             if ((project.costumes.length || project.scripts.length) &&
                 (!activeTarget || activeTarget.isStage)) {
-                throw new Error('コスチュームやブロックを追加するにはスプライトを選択してください。');
+                throw new Error('現在のスプライトにコスチュームやブロックを追加するには、スプライトを選択してください。');
             }
             if (project.backdrops.length && (!this.props.stage || !this.props.stage.id)) {
                 throw new Error('ステージを取得できません。背景を追加できませんでした。');
             }
-            if (project.scripts.length) {
-                if (!AddonHooks.blockly || !AddonHooks.blocklyWorkspace) {
-                    this.props.onActivateBlocksTab();
-                    throw new Error('コードエディターを開いてから、もう一度「素材とブロックを追加」を押してください。素材はまだ追加していません。');
-                }
+            if (hasScripts && (!AddonHooks.blockly || !AddonHooks.blocklyWorkspace)) {
+                this.props.onActivateBlocksTab();
+                throw new Error('コードエディターを開いてから、もう一度「素材とブロックを追加」を押してください。素材はまだ追加していません。');
             }
 
             for (const item of project.costumes) {
@@ -230,11 +232,14 @@ class AISidebar extends React.Component {
                 counts.costumes++;
             }
 
+            const addedSpriteTargets = [];
             for (const spriteSpec of project.sprites) {
                 const costumes = [];
                 for (const item of spriteSpec.costumes) {
                     costumes.push(await this.createCostumeAsset(item.svg, item.name));
+                    counts.spriteCostumes++;
                 }
+                const previousTargetIds = new Set(vm.runtime.targets.map(target => target.id));
                 const sprite = {
                     name: spriteSpec.name,
                     isStage: false,
@@ -253,6 +258,17 @@ class AISidebar extends React.Component {
                 };
                 await vm.addSprite(JSON.stringify(sprite));
                 counts.sprites++;
+                const addedTarget = vm.runtime.targets.find(target =>
+                    !target.isStage && !previousTargetIds.has(target.id)
+                );
+                if (!addedTarget) {
+                    throw new Error(`新しいスプライト「${spriteSpec.name}」の追加先を取得できませんでした。`);
+                }
+                addedSpriteTargets.push({
+                    id: addedTarget.id,
+                    name: addedTarget.getName(),
+                    scripts: spriteSpec.scripts
+                });
             }
 
             for (const item of project.backdrops) {
@@ -261,35 +277,53 @@ class AISidebar extends React.Component {
                 counts.backdrops++;
             }
 
+            const scriptGroups = [];
             if (project.scripts.length) {
-                if (vm.editingTarget && vm.editingTarget.id !== activeTarget.id) {
-                    vm.setEditingTarget(activeTarget.id);
-                }
+                scriptGroups.push({
+                    id: activeTarget.id,
+                    name: activeTarget.getName(),
+                    scripts: project.scripts
+                });
+            }
+            addedSpriteTargets.forEach(target => {
+                if (target.scripts.length) scriptGroups.push(target);
+            });
+
+            if (scriptGroups.length) {
                 if (this.props.activeTabIndex !== BLOCKS_TAB_INDEX) {
                     this.props.onActivateBlocksTab();
                 }
-                const result = insertProgram(
-                    AddonHooks.blockly,
-                    AddonHooks.blocklyWorkspace,
-                    {mode: 'add', scripts: project.scripts},
-                    this.props.toolboxXML
-                );
-                counts.scripts = result.count;
-                const warnings = result.warnings.length ?
-                    ` 注意: ${result.warnings.join(' / ')}` : '';
-                this.setState({
-                    error: '',
-                    notice: `追加完了：コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。${warnings}`
-                });
-            } else {
-                this.setState({
-                    error: '',
-                    notice: `追加完了：コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個。`
-                });
+                const originalTargetId = vm.editingTarget ? vm.editingTarget.id : null;
+                try {
+                    for (const group of scriptGroups) {
+                        if (vm.editingTarget && vm.editingTarget.id !== group.id) {
+                            // VM emits workspaceUpdate synchronously when the editing target changes.
+                            vm.setEditingTarget(group.id);
+                        }
+                        const result = insertProgram(
+                            AddonHooks.blockly,
+                            AddonHooks.blocklyWorkspace,
+                            {mode: 'add', scripts: group.scripts},
+                            this.props.toolboxXML
+                        );
+                        counts.scripts += result.count;
+                        warnings.push(...result.warnings.map(warning => `${group.name}: ${warning}`));
+                    }
+                } finally {
+                    if (originalTargetId && vm.editingTarget && vm.editingTarget.id !== originalTargetId) {
+                        vm.setEditingTarget(originalTargetId);
+                    }
+                }
             }
+
+            const warningText = warnings.length ? ` 注意: ${warnings.join(' / ')}` : '';
+            this.setState({
+                error: '',
+                notice: `追加完了：既存スプライトのコスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個（専用コスチューム ${counts.spriteCostumes}個）、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。${warningText}`
+            });
         } catch (e) {
             this.setState({
-                error: `追加中にエラーが発生しました: ${e.message} （追加済み: コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個）`
+                error: `追加中にエラーが発生しました: ${e.message} （追加済み: 既存コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個・専用コスチューム ${counts.spriteCostumes}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個）`
             });
         } finally {
             this.applyingProject = false;
