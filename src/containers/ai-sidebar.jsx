@@ -11,6 +11,7 @@ import {targetToText} from '../lib/ai/script-to-text.js';
 import {describeToolbox, insertProgram} from '../lib/ai/json-to-blocks.js';
 import {buildSystemMessage} from '../lib/ai/prompts.js';
 import {costumeUpload} from '../lib/file-uploader.js';
+import {normalizeProjectSpec, validateSvg} from '../lib/ai/project-spec.js';
 import {activateTab, BLOCKS_TAB_INDEX} from '../reducers/editor-tab';
 import {openSpriteLibrary} from '../reducers/modals';
 
@@ -38,6 +39,7 @@ class AISidebar extends React.Component {
             'handleInsert',
             'handleOpenSpriteLibrary',
             'handleAddCostume',
+            'handleApplyProject',
             'setMessagesRef'
         ]);
         let isOpen = true;
@@ -59,6 +61,7 @@ class AISidebar extends React.Component {
         };
         this.abortController = null;
         this.messagesEl = null;
+        this.applyingProject = false;
     }
     componentDidUpdate (prevProps, prevState) {
         if (prevState.isOpen !== this.state.isOpen) resizeBlockly();
@@ -167,42 +170,129 @@ class AISidebar extends React.Component {
     handleOpenSpriteLibrary () {
         this.props.onOpenSpriteLibrary();
     }
-    handleAddCostume (svg, name) {
+    createCostumeAsset (svg, name) {
         const vm = this.props.vm;
-        const target = vm.editingTarget;
-        if (!target) {
-            this.setState({error: 'コスチュームを追加する対象がありません。'});
-            return;
-        }
-        if (typeof svg !== 'string' || svg.length > 500000 ||
-            !/^\s*<svg(?:\s|>)/i.test(svg) ||
-            /<(?:script|foreignObject)\b|\son[a-z]+\s*=|(?:href|xlink:href)\s*=\s*["']\s*(?:https?:|\/\/|data:)|url\s*\(/i.test(svg)) {
-            this.setState({error: 'SVG形式が不正、または安全でない要素が含まれています。'});
-            return;
-        }
-        const targetId = target.id;
-        try {
-            const bytes = new TextEncoder().encode(svg);
-            if (bytes.byteLength > 500000) {
-                this.setState({error: 'SVGは500KB以下にしてください。'});
-                return;
-            }
+        validateSvg(svg);
+        const bytes = new TextEncoder().encode(svg);
+        return new Promise((resolve, reject) => {
             costumeUpload(bytes, 'image/svg+xml', vm, costumes => {
-                try {
-                    const costume = costumes[0];
-                    costume.name = (name || 'AI costume').slice(0, 80);
-                    Promise.resolve(vm.addCostume(costume.md5, costume, targetId)).then(() => {
-                        this.setState({
-                            error: '',
-                            notice: `コスチューム「${costume.name}」を追加しました。`
-                        });
-                    }).catch(e => this.setState({error: `コスチュームを追加できませんでした: ${e.message}`}));
-                } catch (e) {
-                    this.setState({error: `コスチュームを追加できませんでした: ${e.message}`});
+                if (!Array.isArray(costumes) || !costumes[0]) {
+                    reject(new Error('SVGからコスチュームを作成できませんでした。'));
+                    return;
                 }
-            }, error => this.setState({error: `SVGを読み込めませんでした: ${String(error)}`}));
+                const costume = costumes[0];
+                costume.name = (name || 'AI costume').slice(0, 80);
+                resolve(costume);
+            }, error => reject(error instanceof Error ? error : new Error(String(error))));
+        });
+    }
+    async handleAddCostume (svg, name) {
+        try {
+            const target = this.props.vm.editingTarget;
+            if (!target || target.isStage) {
+                throw new Error('スプライトを選択してから追加してください。');
+            }
+            const costume = await this.createCostumeAsset(svg, name);
+            await Promise.resolve(this.props.vm.addCostume(costume.md5, costume, target.id));
+            this.setState({
+                error: '',
+                notice: `コスチューム「${costume.name}」を追加しました。`
+            });
         } catch (e) {
-            this.setState({error: `SVGを処理できませんでした: ${e.message}`});
+            this.setState({error: `コスチュームを追加できませんでした: ${e.message}`});
+        }
+    }
+    async handleApplyProject (input) {
+        if (this.applyingProject) return;
+        this.applyingProject = true;
+        const vm = this.props.vm;
+        const counts = {costumes: 0, sprites: 0, backdrops: 0, scripts: 0};
+        try {
+            const project = normalizeProjectSpec(input);
+            const activeTarget = vm.editingTarget;
+            if ((project.costumes.length || project.scripts.length) &&
+                (!activeTarget || activeTarget.isStage)) {
+                throw new Error('コスチュームやブロックを追加するにはスプライトを選択してください。');
+            }
+            if (project.backdrops.length && (!this.props.stage || !this.props.stage.id)) {
+                throw new Error('ステージを取得できません。背景を追加できませんでした。');
+            }
+            if (project.scripts.length) {
+                if (!AddonHooks.blockly || !AddonHooks.blocklyWorkspace) {
+                    this.props.onActivateBlocksTab();
+                    throw new Error('コードエディターを開いてから、もう一度「素材とブロックを追加」を押してください。素材はまだ追加していません。');
+                }
+            }
+
+            for (const item of project.costumes) {
+                const costume = await this.createCostumeAsset(item.svg, item.name);
+                await Promise.resolve(vm.addCostume(costume.md5, costume, activeTarget.id));
+                counts.costumes++;
+            }
+
+            for (const spriteSpec of project.sprites) {
+                const costumes = [];
+                for (const item of spriteSpec.costumes) {
+                    costumes.push(await this.createCostumeAsset(item.svg, item.name));
+                }
+                const sprite = {
+                    name: spriteSpec.name,
+                    isStage: false,
+                    x: spriteSpec.x,
+                    y: spriteSpec.y,
+                    visible: true,
+                    size: 100,
+                    rotationStyle: 'all around',
+                    direction: 90,
+                    draggable: false,
+                    currentCostume: 0,
+                    blocks: {},
+                    variables: {},
+                    costumes: costumes,
+                    sounds: []
+                };
+                await vm.addSprite(JSON.stringify(sprite));
+                counts.sprites++;
+            }
+
+            for (const item of project.backdrops) {
+                const backdrop = await this.createCostumeAsset(item.svg, item.name);
+                await Promise.resolve(vm.addCostume(backdrop.md5, backdrop, this.props.stage.id));
+                counts.backdrops++;
+            }
+
+            if (project.scripts.length) {
+                if (vm.editingTarget && vm.editingTarget.id !== activeTarget.id) {
+                    vm.setEditingTarget(activeTarget.id);
+                }
+                if (this.props.activeTabIndex !== BLOCKS_TAB_INDEX) {
+                    this.props.onActivateBlocksTab();
+                }
+                const result = insertProgram(
+                    AddonHooks.blockly,
+                    AddonHooks.blocklyWorkspace,
+                    {mode: 'add', scripts: project.scripts},
+                    this.props.toolboxXML
+                );
+                counts.scripts = result.count;
+                const warnings = result.warnings.length ?
+                    ` 注意: ${result.warnings.join(' / ')}` : '';
+                this.setState({
+                    error: '',
+                    notice: `追加完了：コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。${warnings}`
+                });
+            } else {
+                this.setState({
+                    error: '',
+                    notice: `追加完了：コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個。`
+                });
+            }
+        } catch (e) {
+            this.setState({
+                error: `追加中にエラーが発生しました: ${e.message} （追加済み: コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個）`
+            });
+        } finally {
+            this.applyingProject = false;
         }
     }
     handleInsert (program, mode) {
@@ -259,6 +349,7 @@ class AISidebar extends React.Component {
                 onInsert={this.handleInsert}
                 onOpenSpriteLibrary={this.handleOpenSpriteLibrary}
                 onAddCostume={this.handleAddCostume}
+                onApplyProject={this.handleApplyProject}
                 onKeyDown={this.handleKeyDown}
                 onQuickPrompt={this.handleQuickPrompt}
                 onSend={this.handleSend}
@@ -275,6 +366,7 @@ AISidebar.propTypes = {
     onActivateBlocksTab: PropTypes.func,
     onOpenSpriteLibrary: PropTypes.func,
     toolboxXML: PropTypes.string,
+    stage: PropTypes.shape({id: PropTypes.string}),
     vm: PropTypes.instanceOf(VM).isRequired
 };
 
@@ -282,7 +374,8 @@ const mapStateToProps = state => ({
     activeTabIndex: state.scratchGui.editorTab.activeTabIndex,
     toolboxXML: state.scratchGui.toolbox.toolboxXML,
     // re-render when the selected sprite changes
-    editingTarget: state.scratchGui.targets.editingTarget
+    editingTarget: state.scratchGui.targets.editingTarget,
+    stage: state.scratchGui.targets.stage
 });
 
 const mapDispatchToProps = dispatch => ({
