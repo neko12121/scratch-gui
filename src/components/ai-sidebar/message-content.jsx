@@ -128,7 +128,7 @@ const ProjectSegment = ({content, onApplyProject}) => {
                 <div>{`現在のスプライトのコスチューム: ${costumeCount}個`}</div>
                 <div>{`新しいスプライト: ${project.sprites.length}個（コスチューム合計 ${spriteCostumeCount}個）`}</div>
                 <div>{`ステージ背景: ${project.backdrops.length}個`}</div>
-                <div>{`ブロックスクリプト: ${scriptCount}個`}</div>
+                <div>{`ブロックスクリプト: ${scriptCount}個（現在のスプライト＋新規スプライト）`}</div>
             </div>
             <div className={styles.blocksActions}>
                 <button className={styles.primaryButton} onClick={() => onApplyProject(project)}>
