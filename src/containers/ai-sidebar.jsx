@@ -182,15 +182,16 @@ class AISidebar extends React.Component {
         const targetId = target.id;
         try {
             const bytes = new TextEncoder().encode(svg);
-            costumeUpload(bytes.buffer, 'image/svg+xml', vm, costumes => {
+            costumeUpload(bytes, 'image/svg+xml', vm, costumes => {
                 try {
                     const costume = costumes[0];
                     costume.name = (name || 'AI costume').slice(0, 80);
-                    vm.addCostume(costume.md5, costume, targetId);
-                    this.setState({
-                        error: '',
-                        notice: `コスチューム「${costume.name}」を追加しました。`
-                    });
+                    Promise.resolve(vm.addCostume(costume.md5, costume, targetId)).then(() => {
+                        this.setState({
+                            error: '',
+                            notice: `コスチューム「${costume.name}」を追加しました。`
+                        });
+                    }).catch(e => this.setState({error: `コスチュームを追加できませんでした: ${e.message}`}));
                 } catch (e) {
                     this.setState({error: `コスチュームを追加できませんでした: ${e.message}`});
                 }
