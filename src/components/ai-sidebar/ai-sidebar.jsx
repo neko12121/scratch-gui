@@ -79,6 +79,7 @@ const AISidebarComponent = props => {
         onClear,
         onInsert,
         onOpenSpriteLibrary,
+        onAddCostume,
         onKeyDown,
         onQuickPrompt,
         onSend,
@@ -162,6 +163,7 @@ const AISidebarComponent = props => {
                                     text={m.content}
                                     toolboxXML={toolboxXML}
                                     onInsert={onInsert}
+                                    onAddCostume={onAddCostume}
                                 />
                             )}
                         </div>
@@ -185,6 +187,11 @@ const AISidebarComponent = props => {
                 </div>
 
                 <div className={styles.quickPrompts}>
+                    <button
+                        className={styles.chip}
+                        disabled={busy}
+                        onClick={() => onQuickPrompt('今選択しているスプライトに使える、シンプルなオリジナルSVGコスチュームを作ってください。回答は必ず scratch-costume-json のコードフェンスで囲んだJSONだけにし、形式は {"name":"コスチューム名","svg":"<svg xmlns=...>...</svg>"} としてください。SVGは自己完結した図形だけを使い、script、foreignObject、外部URL、画像埋め込みは使わないでください。')}
+                    >{'AIでコスチュームを作る'}</button>
                     <button
                         className={styles.chip}
                         disabled={busy}
@@ -244,6 +251,7 @@ AISidebarComponent.propTypes = {
     onClear: PropTypes.func,
     onInsert: PropTypes.func,
     onOpenSpriteLibrary: PropTypes.func,
+    onAddCostume: PropTypes.func,
     onKeyDown: PropTypes.func,
     onQuickPrompt: PropTypes.func,
     onSend: PropTypes.func,
