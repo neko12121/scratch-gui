@@ -12,6 +12,9 @@ test('AI prompt requires the supported Scratch block JSON format', () => {
     });
 
     assert.match(message, /```scratch-blocks/);
+    assert.match(message, /scratch-project-json/);
+    assert.match(message, /backdrops/);
+    assert.match(message, /costumes/);
     assert.match(message, /opcode、入力名、フィールド名/);
     assert.match(message, /使えるブロック一覧/);
     assert.ok(message.includes('motion_movesteps(STEPS:value<math_number NUM="10">)'));
