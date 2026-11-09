@@ -20,7 +20,8 @@ test('project spec accepts multiple costumes, a new sprite, a backdrop, and scri
             costumes: [
                 {name: '通常', svg: svg('#ff0000')},
                 {name: 'キャッチ', svg: svg('#00ff00')}
-            ]
+            ],
+            scripts: [[{opcode: 'event_whenflagclicked'}]]
         }],
         backdrops: [{name: '草原', svg: svg('#00aa00')}],
         scripts: [[{opcode: 'event_whenflagclicked'}]]
@@ -29,6 +30,7 @@ test('project spec accepts multiple costumes, a new sprite, a backdrop, and scri
     assert.equal(project.costumes.length, 2);
     assert.equal(project.sprites.length, 1);
     assert.equal(project.sprites[0].costumes.length, 2);
+    assert.equal(project.sprites[0].scripts.length, 1);
     assert.equal(project.backdrops.length, 1);
     assert.equal(project.scripts.length, 1);
 });
