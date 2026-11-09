@@ -78,6 +78,7 @@ const AISidebarComponent = props => {
         onChangeSettings,
         onClear,
         onInsert,
+        onOpenSpriteLibrary,
         onKeyDown,
         onQuickPrompt,
         onSend,
@@ -184,6 +185,11 @@ const AISidebarComponent = props => {
                 </div>
 
                 <div className={styles.quickPrompts}>
+                    <button
+                        className={styles.chip}
+                        disabled={busy}
+                        onClick={onOpenSpriteLibrary}
+                    >{'Scratchの素材を追加'}</button>
                     {QUICK_PROMPTS.map(p => (
                         <button
                             className={styles.chip}
@@ -237,6 +243,7 @@ AISidebarComponent.propTypes = {
     onChangeSettings: PropTypes.func,
     onClear: PropTypes.func,
     onInsert: PropTypes.func,
+    onOpenSpriteLibrary: PropTypes.func,
     onKeyDown: PropTypes.func,
     onQuickPrompt: PropTypes.func,
     onSend: PropTypes.func,
