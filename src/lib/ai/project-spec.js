@@ -147,7 +147,8 @@ const normalizeProjectSpec = input => {
             y: y,
             costumes: sprite.costumes.map((asset, costumeIndex) =>
                 normalizeAsset(asset, 'コスチューム' + (costumeIndex + 1))
-            )
+            ),
+            scripts: normalizeScripts(sprite.scripts)
         };
     });
     const backdrops = rawBackdrops.map((asset, index) =>
