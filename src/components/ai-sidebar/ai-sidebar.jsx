@@ -179,6 +179,7 @@ const AISidebarComponent = props => {
                                     toolboxXML={toolboxXML}
                                     onInsert={onInsert}
                                     onAddCostume={onAddCostume}
+                                    onApplyProject={onApplyProject}
                                 />
                             ) : (
                                 <div className={styles.thinking}>{'考えています…'}</div>
