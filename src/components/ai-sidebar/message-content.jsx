@@ -103,6 +103,28 @@ const describeProgram = program => {
     return lines.join('\n');
 };
 
+const CostumeSegment = ({content, onAddCostume}) => {
+    let data;
+    try {
+        data = JSON.parse(content);
+        if (!data || typeof data.svg !== 'string' || typeof data.name !== 'string') {
+            throw new Error('name と svg が必要です');
+        }
+    } catch (e) {
+        return <div className={styles.codeError}>{`コスチュームJSONを読み込めません: ${e.message}`}</div>;
+    }
+    return (
+        <div className={styles.blocksCard}>
+            <div className={styles.text}>{`生成コスチューム: ${data.name}`}</div>
+            <div className={styles.blocksActions}>
+                <button className={styles.primaryButton} onClick={() => onAddCostume(data.svg, data.name)}>
+                    {'このスプライトに追加'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const BlocksSegment = ({content, toolboxXML, onInsert, streaming}) => {
     if (streaming) {
         return <div className={styles.codeNote}>{'ブロックを作っています…'}</div>;
@@ -148,11 +170,12 @@ const BlocksSegment = ({content, toolboxXML, onInsert, streaming}) => {
 BlocksSegment.propTypes = {
     content: PropTypes.string,
     onInsert: PropTypes.func,
+    onAddCostume: PropTypes.func,
     streaming: PropTypes.bool,
     toolboxXML: PropTypes.string
 };
 
-const MessageContent = ({text, toolboxXML, onInsert, streaming}) => {
+const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) => {
     // While streaming, hide an unfinished scratch-blocks fence
     let displayText = text;
     let pendingBlocks = false;
@@ -168,6 +191,9 @@ const MessageContent = ({text, toolboxXML, onInsert, streaming}) => {
         <div>
             {segments.map((seg, i) => {
                 if (seg.type === 'text') return renderText(seg.content, i);
+                if (seg.lang === 'scratch-costume-json') {
+                    return <CostumeSegment content={seg.content} key={i} onAddCostume={onAddCostume} />;
+                }
                 if (seg.lang === 'scratch-blocks' || seg.lang === 'json-scratch') {
                     return (
                         <BlocksSegment
