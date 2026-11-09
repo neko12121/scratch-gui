@@ -175,13 +175,18 @@ class AISidebar extends React.Component {
             return;
         }
         if (typeof svg !== 'string' || svg.length > 500000 ||
-            !/^\\s*<svg(?:\\s|>)/i.test(svg)) {
-            this.setState({error: 'SVG形式ではないか、サイズが大きすぎます（最大500KB）。'});
+            !/^\\s*<svg(?:\\s|>)/i.test(svg) ||
+            /<(?:script|foreignObject)\\b|\\son[a-z]+\\s*=|(?:href|xlink:href)\\s*=\\s*["']\\s*(?:https?:|\\/\\/|data:)|url\\s*\\(/i.test(svg)) {
+            this.setState({error: 'SVG形式が不正、または安全でない要素が含まれています。'});
             return;
         }
         const targetId = target.id;
         try {
             const bytes = new TextEncoder().encode(svg);
+            if (bytes.byteLength > 500000) {
+                this.setState({error: 'SVGは500KB以下にしてください。'});
+                return;
+            }
             costumeUpload(bytes, 'image/svg+xml', vm, costumes => {
                 try {
                     const costume = costumes[0];
