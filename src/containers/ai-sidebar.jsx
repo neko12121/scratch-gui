@@ -211,6 +211,7 @@ class AISidebar extends React.Component {
         try {
             const project = normalizeProjectSpec(input);
             const activeTarget = vm.editingTarget;
+            const initialTargetId = activeTarget ? activeTarget.id : null;
             const spriteScriptCount = project.sprites.reduce((sum, sprite) =>
                 sum + sprite.scripts.length, 0);
             const hasScripts = project.scripts.length > 0 || spriteScriptCount > 0;
@@ -293,7 +294,6 @@ class AISidebar extends React.Component {
                 if (this.props.activeTabIndex !== BLOCKS_TAB_INDEX) {
                     this.props.onActivateBlocksTab();
                 }
-                const originalTargetId = vm.editingTarget ? vm.editingTarget.id : null;
                 try {
                     for (const group of scriptGroups) {
                         if (!vm.editingTarget || vm.editingTarget.id !== group.id) {
@@ -310,8 +310,8 @@ class AISidebar extends React.Component {
                         warnings.push(...result.warnings.map(warning => `${group.name}: ${warning}`));
                     }
                 } finally {
-                    if (originalTargetId && vm.editingTarget && vm.editingTarget.id !== originalTargetId) {
-                        vm.setEditingTarget(originalTargetId);
+                    if (initialTargetId && vm.editingTarget && vm.editingTarget.id !== initialTargetId) {
+                        vm.setEditingTarget(initialTargetId);
                     }
                 }
             }
