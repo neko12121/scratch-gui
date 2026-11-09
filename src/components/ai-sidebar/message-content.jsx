@@ -251,7 +251,7 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, onApplyProjec
                     >{seg.content}</pre>
                 );
             })}
-            {pendingBlocks ? <BlocksSegment streaming /> : null}
+            {pendingBlocks ? <div className={styles.codeNote}>{'AIが素材・ブロックを作っています…'}</div> : null}
         </div>
     );
 };
