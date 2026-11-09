@@ -33,6 +33,10 @@ const findJsonEnd = (text, start) => {
 };
 
 const isProjectJSON = value => {
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        !['costumes', 'sprites', 'backdrops'].some(key => Object.prototype.hasOwnProperty.call(value, key))) {
+        return false;
+    }
     try {
         normalizeProjectSpec(value);
         return true;
