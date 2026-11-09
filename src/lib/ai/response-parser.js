@@ -1,4 +1,5 @@
 import {normalizeProgram} from './json-to-blocks.js';
+import {normalizeProjectSpec} from './project-spec.js';
 
 const findJsonEnd = (text, start) => {
     const stack = [text[start]];
@@ -29,6 +30,15 @@ const findJsonEnd = (text, start) => {
         }
     }
     return -1;
+};
+
+const isProjectJSON = value => {
+    try {
+        normalizeProjectSpec(value);
+        return true;
+    } catch (e) {
+        return false;
+    }
 };
 
 const isProgramJSON = value => {
@@ -79,11 +89,17 @@ const splitBareJsonSegments = text => {
             // Not a complete JSON value; keep scanning for a later candidate.
         }
 
-        if (parsed && isProgramJSON(value)) {
+        const isProject = parsed && isProjectJSON(value);
+        const isProgram = parsed && isProgramJSON(value);
+        if (isProject || isProgram) {
             if (cursor > last) {
                 segments.push({type: 'text', content: text.slice(last, cursor)});
             }
-            segments.push({type: 'code', lang: 'scratch-blocks', content: candidate});
+            segments.push({
+                type: 'code',
+                lang: isProject ? 'scratch-project-json' : 'scratch-blocks',
+                content: candidate
+            });
             last = end;
         }
 
