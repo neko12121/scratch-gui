@@ -170,7 +170,6 @@ const BlocksSegment = ({content, toolboxXML, onInsert, streaming}) => {
 BlocksSegment.propTypes = {
     content: PropTypes.string,
     onInsert: PropTypes.func,
-    onAddCostume: PropTypes.func,
     streaming: PropTypes.bool,
     toolboxXML: PropTypes.string
 };
@@ -180,7 +179,9 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) =
     let displayText = text;
     let pendingBlocks = false;
     if (streaming) {
-        const open = text.lastIndexOf('```scratch-blocks');
+        const openBlocks = text.lastIndexOf('```scratch-blocks');
+        const openCostume = text.lastIndexOf('```scratch-costume-json');
+        const open = Math.max(openBlocks, openCostume);
         if (open !== -1 && text.indexOf('```', open + 3) === -1) {
             displayText = text.slice(0, open);
             pendingBlocks = true;
@@ -218,6 +219,7 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, streaming}) =
 
 MessageContent.propTypes = {
     onInsert: PropTypes.func,
+    onAddCostume: PropTypes.func,
     streaming: PropTypes.bool,
     text: PropTypes.string,
     toolboxXML: PropTypes.string
