@@ -80,3 +80,48 @@ test('project spec enforces per-target costume limits', () => {
         }))
     }), /上限/);
 });
+
+test('project spec converts shadow/value shorthand into primitive inputs', () => {
+    const project = normalizeProjectSpec({
+        scripts: [[{
+            opcode: 'operator_random',
+            inputs: {
+                FROM: {shadow: 'math_number', value: '-200'},
+                TO: {shadow: 'math_number', value: '200'}
+            }
+        }]]
+    });
+
+    assert.deepEqual(project.scripts[0][0].inputs, {FROM: '-200', TO: '200'});
+});
+
+test('project spec preserves nested reporter blocks and validates statement stacks', () => {
+    const project = normalizeProjectSpec({
+        scripts: [[{
+            opcode: 'control_if',
+            inputs: {
+                CONDITION: {
+                    opcode: 'operator_lt',
+                    inputs: {
+                        OPERAND1: {opcode: 'motion_yposition'},
+                        OPERAND2: {shadow: 'math_number', value: -180}
+                    }
+                },
+                SUBSTACK: [{opcode: 'motion_changeyby', inputs: {DY: -5}}]
+            }
+        }]]
+    });
+
+    assert.equal(project.scripts[0][0].inputs.CONDITION.opcode, 'operator_lt');
+    assert.equal(project.scripts[0][0].inputs.CONDITION.inputs.OPERAND2, -180);
+    assert.equal(project.scripts[0][0].inputs.SUBSTACK[0].opcode, 'motion_changeyby');
+});
+
+test('project spec rejects malformed input objects instead of treating them as blocks', () => {
+    assert.throws(() => normalizeProjectSpec({
+        scripts: [[{
+            opcode: 'operator_random',
+            inputs: {FROM: {shadow: 'math_number'}}
+        }]]
+    }), /入力が正しくありません/);
+});
