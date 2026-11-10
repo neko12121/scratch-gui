@@ -80,7 +80,7 @@ const normalizeAsset = (asset, fallbackName) => {
     };
 };
 
-const STATEMENT_INPUT = /^SUBSTACK\\d*$/;
+const STATEMENT_INPUT = /^SUBSTACK\d*$/;
 
 const isPrimitiveInput = value =>
     typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
