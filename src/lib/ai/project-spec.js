@@ -80,25 +80,69 @@ const normalizeAsset = (asset, fallbackName) => {
     };
 };
 
+const STATEMENT_INPUT = /^SUBSTACK\\d*$/;
+
+const isPrimitiveInput = value =>
+    typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+
+const normalizeBlock = block => {
+    if (!isObject(block) || typeof block.opcode !== 'string' || !block.opcode) {
+        throw new Error('scripts内に正しくないブロックがあります。');
+    }
+    if (block.fields !== undefined && !isObject(block.fields)) {
+        throw new Error('ブロックのfieldsはオブジェクトにしてください。');
+    }
+
+    const inputs = block.inputs === undefined ? {} : block.inputs;
+    if (!isObject(inputs)) throw new Error('ブロックのinputsはオブジェクトにしてください。');
+
+    const normalizedInputs = {};
+    Object.keys(inputs).forEach(key => {
+        const value = inputs[key];
+
+        if (STATEMENT_INPUT.test(key)) {
+            const stack = Array.isArray(value) ? value : [value];
+            normalizedInputs[key] = stack.map(normalizeBlock);
+            return;
+        }
+
+        if (Array.isArray(value)) {
+            throw new Error('ブロックのvalue入力に配列は指定できません: ' + key);
+        }
+
+        if (isObject(value)) {
+            if (typeof value.opcode === 'string') {
+                normalizedInputs[key] = normalizeBlock(value);
+                return;
+            }
+
+            // Backward compatibility: convert {shadow, value} shorthand to
+            // the primitive value expected by json-to-blocks.js.
+            if (typeof value.shadow === 'string' && value.shadow &&
+                Object.prototype.hasOwnProperty.call(value, 'value') &&
+                isPrimitiveInput(value.value)) {
+                normalizedInputs[key] = value.value;
+                return;
+            }
+
+            throw new Error('ブロックの入力が正しくありません: ' + key);
+        }
+
+        if (!isPrimitiveInput(value)) {
+            throw new Error('ブロックの入力値が正しくありません: ' + key);
+        }
+        normalizedInputs[key] = value;
+    });
+
+    return {...block, inputs: normalizedInputs};
+};
+
 const normalizeScripts = scripts => {
     if (scripts === undefined || scripts === null) return [];
     if (!Array.isArray(scripts)) throw new Error('scriptsは配列で指定してください。');
     if (scripts.length === 0) return [];
     const normalized = normalizeProgram({scripts: scripts});
-    const visit = block => {
-        if (!isObject(block) || typeof block.opcode !== 'string' || !block.opcode) {
-            throw new Error('scripts内に正しくないブロックがあります。');
-        }
-        const inputs = block.inputs || {};
-        if (!isObject(inputs)) throw new Error('ブロックのinputsはオブジェクトにしてください。');
-        Object.keys(inputs).forEach(key => {
-            const value = inputs[key];
-            if (Array.isArray(value)) value.forEach(visit);
-            else if (isObject(value)) visit(value);
-        });
-    };
-    normalized.scripts.forEach(script => script.forEach(visit));
-    return normalized.scripts;
+    return normalized.scripts.map(script => script.map(normalizeBlock));
 };
 
 /**
