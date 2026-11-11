@@ -131,7 +131,7 @@ const buildSystemMessage = ({blockCatalog, projectText}) => [
     '',
     '## 現在のスプライトのコード',
     projectText || '(なし)'
-].join('\\n');
+].join('\n');
 
 const QUICK_PROMPTS = [
     {
