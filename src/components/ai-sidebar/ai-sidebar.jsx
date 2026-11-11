@@ -6,7 +6,7 @@ import React from 'react';
 import MessageContent from './message-content.jsx';
 import {QUICK_PROMPTS} from '../../lib/ai/prompts.js';
 import styles from './ai-sidebar.css';
- 
+
 const MULTI_COSTUME_PROMPT = [
     '今選択しているスプライト用に、見た目やポーズが異なる3つのコスチュームを作ってください。',
     'scratch-project-json形式で、costumes配列にnameとsvgを3個入れてください。',
