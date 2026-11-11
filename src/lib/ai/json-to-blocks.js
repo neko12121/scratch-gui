@@ -113,23 +113,23 @@ const describeToolbox = toolboxXML => {
                 const source = Array.from(child.children)
                     .find(c => c.nodeName === 'shadow' || c.nodeName === 'block');
                 if (!source) {
-                    parts.push(name + ':value');
+                    parts.push(`${name}:value`);
                     continue;
                 }
                 const sourceType = source.getAttribute('type') || 'block';
                 const defaults = Array.from(source.children)
                     .filter(c => c.nodeName === 'field')
-                    .map(field => field.getAttribute('name') + '=' + JSON.stringify(field.textContent));
-                parts.push(name + ':value<' + sourceType +
-                    (defaults.length ? ' ' + defaults.join(' ') : '') + '>');
+                    .map(field => `${field.getAttribute('name')}=${JSON.stringify(field.textContent)}`);
+                parts.push(`${name}:value<${sourceType}${defaults.length ? ` ${defaults.join(' ')}` : ''}>`);
             } else if (child.nodeName === 'field') {
-                parts.push('field ' + name + '=' + JSON.stringify(child.textContent));
+                parts.push(`field ${name}=${JSON.stringify(child.textContent)}`);
             } else if (child.nodeName === 'statement') {
-                parts.push(name + ':stack');
+                parts.push(`${name}:stack`);
             }
         }
-        return parts.length ? type + '(' + parts.join(', ') + ')' : type;
-    }).join('\n');
+        return parts.length ? `${type}(${parts.join(', ')})` : type;
+    })
+        .join('\n');
 };
 
 const createEl = (doc, name) => doc.createElement(name);
@@ -162,12 +162,12 @@ const buildStack = (doc, templates, list, warnings) => {
 
 const buildBlock = (doc, templates, spec, warnings) => {
     if (!spec || typeof spec !== 'object' || typeof spec.opcode !== 'string') {
-        warnings.push('不正なブロック指定をスキップしました: ' + JSON.stringify(spec));
+        warnings.push(`不正なブロック指定をスキップしました: ${JSON.stringify(spec)}`);
         return null;
     }
     const template = templates[spec.opcode];
     if (!template) {
-        warnings.push('「' + spec.opcode + '」は現在のツールボックスにありません。ブロックをスキップしました。');
+        warnings.push(`「${spec.opcode}」は現在のツールボックスにありません。ブロックをスキップしました。`);
         return null;
     }
 
@@ -182,12 +182,12 @@ const buildBlock = (doc, templates, spec, warnings) => {
     // Only accept fields that actually exist on this toolbox block.
     const fields = spec.fields || {};
     if (typeof fields !== 'object' || Array.isArray(fields)) {
-        warnings.push('「' + spec.opcode + '」の fields はオブジェクトではありません。');
+        warnings.push(`「${spec.opcode}」の fields はオブジェクトではありません。`);
     } else {
         for (const name of Object.keys(fields)) {
             const fieldEl = findChild('field', name);
             if (!fieldEl) {
-                warnings.push('「' + spec.opcode + '」に field「' + name + '」はありません。無視しました。');
+                warnings.push(`「${spec.opcode}」に field「${name}」はありません。無視しました。`);
                 continue;
             }
             setFieldText(fieldEl, fields[name]);
@@ -197,7 +197,7 @@ const buildBlock = (doc, templates, spec, warnings) => {
     // Only accept value/statement inputs that are present in the real block template.
     const inputs = spec.inputs || {};
     if (typeof inputs !== 'object' || Array.isArray(inputs)) {
-        warnings.push('「' + spec.opcode + '」の inputs はオブジェクトではありません。');
+        warnings.push(`「${spec.opcode}」の inputs はオブジェクトではありません。`);
         return el;
     }
     for (const name of Object.keys(inputs)) {
@@ -205,7 +205,7 @@ const buildBlock = (doc, templates, spec, warnings) => {
         if (STATEMENT_INPUT.test(name)) {
             let stmt = findChild('statement', name);
             if (!stmt) {
-                warnings.push('「' + spec.opcode + '」に stack 入力「' + name + '」はありません。無視しました。');
+                warnings.push(`「${spec.opcode}」に stack 入力「${name}」はありません。無視しました。`);
                 continue;
             }
             const stackList = Array.isArray(value) ? value : [value];
@@ -219,12 +219,12 @@ const buildBlock = (doc, templates, spec, warnings) => {
         }
 
         if (Array.isArray(value)) {
-            warnings.push('「' + spec.opcode + '」の value 入力「' + name + '」に配列は使えません。無視しました。');
+            warnings.push(`「${spec.opcode}」の value 入力「${name}」に配列は使えません。無視しました。`);
             continue;
         }
         const valueEl = findChild('value', name);
         if (!valueEl) {
-            warnings.push('「' + spec.opcode + '」に value 入力「' + name + '」はありません。無視しました。');
+            warnings.push(`「${spec.opcode}」に value 入力「${name}」はありません。無視しました。`);
             continue;
         }
 
@@ -246,7 +246,7 @@ const buildBlock = (doc, templates, spec, warnings) => {
                 }
                 setFieldText(field, value);
             } else {
-                warnings.push('「' + spec.opcode + '」の入力「' + name + '」はブロックを必要とします。数値・文字列ではなく opcode オブジェクトを指定してください。');
+                warnings.push(`「${spec.opcode}」の入力「${name}」はブロックを必要とします。数値・文字列ではなく opcode オブジェクトを指定してください。`);
             }
         }
     }
