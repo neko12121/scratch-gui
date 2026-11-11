@@ -6,6 +6,28 @@ import React from 'react';
 import MessageContent from './message-content.jsx';
 import {QUICK_PROMPTS} from '../../lib/ai/prompts.js';
 import styles from './ai-sidebar.css';
+ 
+const MULTI_COSTUME_PROMPT = [
+    '今選択しているスプライト用に、見た目やポーズが異なる3つのコスチュームを作ってください。',
+    'scratch-project-json形式で、costumes配列にnameとsvgを3個入れてください。',
+    'sprites、backdrops、scriptsは空配列にし、安全なSVG図形だけを使ってください。'
+].join(' ');
+
+const BACKDROP_PROMPT = [
+    'Scratchのステージに使うオリジナル背景を1〜2個作ってください。',
+    'scratch-project-json形式で、backdrops配列にnameとsvgを入れてください。',
+    'costumes、sprites、scriptsは空配列にし、ステージ全体を覆う横長の風景にしてください。'
+].join(' ');
+
+const GAME_PROMPT = [
+    '簡単なゲームを作るため、素材とブロックを一括生成してください。',
+    'scratch-project-json形式のコードフェンスを1つだけ出力してください。',
+    'costumesに選択中スプライトの素材、spritesに新規スプライトと各2個程度のcostumes、',
+    'backdropsに背景、scriptsに選択中スプライトのブロックを入れてください。',
+    '新規スプライトにも専用scriptsを追加し、ブロック仕様一覧に厳密に従ってください。',
+    '変数が必要なら最小限にしてください。'
+].join(' ');
+
 
 const SettingsPanel = ({settings, onChange, onClose}) => (
     <div className={styles.settings}>
@@ -194,17 +216,17 @@ const AISidebarComponent = props => {
                     <button
                         className={styles.chip}
                         disabled={busy}
-                        onClick={() => onQuickPrompt('今選択しているスプライト用に、見た目やポーズが異なる3つのコスチュームを作ってください。回答は scratch-project-json のコードフェンスで、costumes 配列に name と svg を3個入れ、sprites/backdrops/scripts は空配列にしてください。SVGは自己完結した安全な図形だけを使ってください。')}
+                        onClick={() => onQuickPrompt(MULTI_COSTUME_PROMPT)}
                     >{'複数コスチューム生成'}</button>
                     <button
                         className={styles.chip}
                         disabled={busy}
-                        onClick={() => onQuickPrompt('Scratchのステージに使うオリジナル背景を1〜2個作ってください。回答は scratch-project-json のコードフェンスで、backdrops 配列に name と svg を入れ、costumes/sprites/scripts は空配列にしてください。ステージ全体を覆う横長の風景にしてください。')}
+                        onClick={() => onQuickPrompt(BACKDROP_PROMPT)}
                     >{'背景を自動生成'}</button>
                     <button
                         className={styles.chip}
                         disabled={busy}
-                        onClick={() => onQuickPrompt('簡単なゲームを作るため、素材とブロックを一括生成してください。回答は scratch-project-json のコードフェンス1つだけにしてください。costumesには現在選択中のスプライト用素材、spritesには追加で必要なスプライトと各2個程度のcostumes、backdropsには背景を1個、scriptsには現在選択中のスプライト用ブロックを入れ、各sprites項目にもそのスプライト専用のscriptsを入れてください。新規スプライトの動作コードも作成し、opcode/inputs/fieldsは使えるブロック一覧に完全に従い、変数が必要なら最小限にしてください。')}
+                        onClick={() => onQuickPrompt(GAME_PROMPT)}
                     >{'ゲームを一括生成'}</button>
                     <button
                         className={styles.chip}
