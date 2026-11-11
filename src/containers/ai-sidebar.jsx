@@ -317,14 +317,21 @@ class AISidebar extends React.Component {
             }
 
             const warningText = warnings.length ? ` 注意: ${warnings.join(' / ')}` : '';
-            this.setState({
-                error: '',
-                notice: `追加完了：既存スプライトのコスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個（専用コスチューム ${counts.spriteCostumes}個）、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。${warningText}`
-            });
+            const notice = [
+                `追加完了：既存スプライトのコスチューム ${counts.costumes}個、`,
+                `新規スプライト ${counts.sprites}個（専用コスチューム ${counts.spriteCostumes}個）、`,
+                `背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。`,
+                warningText
+            ].join('');
+            this.setState({error: '', notice: notice});
         } catch (e) {
-            this.setState({
-                error: `追加中にエラーが発生しました: ${e.message} （追加済み: 既存コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個・専用コスチューム ${counts.spriteCostumes}個、背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個）`
-            });
+            const error = [
+                `追加中にエラーが発生しました: ${e.message} （追加済み: `,
+                `既存コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、`,
+                `専用コスチューム ${counts.spriteCostumes}個、背景 ${counts.backdrops}個、`,
+                `スクリプト ${counts.scripts}個）`
+            ].join('');
+            this.setState({error: error});
         } finally {
             this.applyingProject = false;
         }
