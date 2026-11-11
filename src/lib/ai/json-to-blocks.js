@@ -43,8 +43,8 @@ const SHADOW_FIELD_NAMES = {
 // Variable/list blocks are generated dynamically by scratch-blocks and are not
 // part of the toolbox XML, so we provide templates for them here.
 /* eslint-disable max-len */
-const num = (name, v) => `<value name="${name}"><shadow type="math_number"><field name="NUM">${v}</field></shadow></value>`;
-const int = (name, v) => `<value name="${name}"><shadow type="math_integer"><field name="NUM">${v}</field></shadow></value>`;
+const num = (name, v) => `<value name="${name}"><shadow type="math_number">`<field name="NUM">${v}</field></shadow></value>`;
+const int = (name, v) => `<value name="${name}"><shadow type="math_integer">`<field name="NUM">${v}</field></shadow></value>`;
 const txt = (name, v) => `<value name="${name}"><shadow type="text"><field name="TEXT">${v}</field></shadow></value>`;
 const VAR = '<field name="VARIABLE" variabletype="">my variable</field>';
 const LIST = '<field name="LIST" variabletype="list">my list</field>';
