@@ -131,12 +131,20 @@ const ProjectSegment = ({content, onApplyProject}) => {
                 <div>{`ブロックスクリプト: ${scriptCount}個（現在のスプライト＋新規スプライト）`}</div>
             </div>
             <div className={styles.blocksActions}>
-                <button className={styles.primaryButton} onClick={() => onApplyProject(project)}>
+                <button
+                    className={styles.primaryButton}
+                    onClick={() => onApplyProject(project)}
+                >
                     {'素材とブロックを追加'}
                 </button>
             </div>
         </div>
     );
+};
+
+ProjectSegment.propTypes = {
+    content: PropTypes.string,
+    onApplyProject: PropTypes.func
 };
 
 const CostumeSegment = ({content, onAddCostume}) => {
@@ -153,12 +161,20 @@ const CostumeSegment = ({content, onAddCostume}) => {
         <div className={styles.blocksCard}>
             <div className={styles.text}>{`生成コスチューム: ${data.name}`}</div>
             <div className={styles.blocksActions}>
-                <button className={styles.primaryButton} onClick={() => onAddCostume(data.svg, data.name)}>
+                <button
+                    className={styles.primaryButton}
+                    onClick={() => onAddCostume(data.svg, data.name)}
+                >
                     {'このスプライトに追加'}
                 </button>
             </div>
         </div>
     );
+};
+
+CostumeSegment.propTypes = {
+    content: PropTypes.string,
+    onAddCostume: PropTypes.func
 };
 
 const BlocksSegment = ({content, toolboxXML, onInsert, streaming}) => {
@@ -230,10 +246,22 @@ const MessageContent = ({text, toolboxXML, onInsert, onAddCostume, onApplyProjec
             {segments.map((seg, i) => {
                 if (seg.type === 'text') return renderText(seg.content, i);
                 if (seg.lang === 'scratch-project-json') {
-                    return <ProjectSegment content={seg.content} key={i} onApplyProject={onApplyProject} />;
+                    return (
+                        <ProjectSegment
+                            content={seg.content}
+                            key={i}
+                            onApplyProject={onApplyProject}
+                        />
+                    );
                 }
                 if (seg.lang === 'scratch-costume-json') {
-                    return <CostumeSegment content={seg.content} key={i} onAddCostume={onAddCostume} />;
+                    return (
+                        <CostumeSegment
+                            content={seg.content}
+                            key={i}
+                            onAddCostume={onAddCostume}
+                        />
+                    );
                 }
                 if (seg.lang === 'scratch-blocks' || seg.lang === 'json-scratch') {
                     return (
