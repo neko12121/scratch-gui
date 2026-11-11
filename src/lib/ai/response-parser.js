@@ -63,7 +63,7 @@ const isProgramJSON = value => {
  * Split plain assistant text around valid, unfenced Scratch program JSON.
  * Only JSON accepted by normalizeProgram and containing opcode blocks is promoted.
  * @param {string} text assistant text without Markdown code fences
- * @returns {Array<{type: string, content: string, lang?: string}>} display segments
+ * @returns {Array<Object>} display segments
  */
 const splitBareJsonSegments = text => {
     const segments = [];
