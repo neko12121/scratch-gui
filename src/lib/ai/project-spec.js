@@ -174,14 +174,9 @@ const normalizeScripts = scripts => {
 };
 
 /**
- * Normalize a combined AI project response.
- *
- * costumes: costumes for the currently selected sprite
- * sprites: new sprites, each with one or more SVG costumes
- * backdrops: new stage backdrops
- * scripts: Scratch block scripts for the currently selected target
- * @param {object|string} input Project specification object or JSON string.
- * @returns {object} Normalized project specification.
+ * Collect variable and broadcast names referenced by generated scripts.
+ * @param {Array<Array<Array<object>>>} scriptGroups Scripts grouped by target.
+ * @returns {{variables: string[], broadcasts: string[]}} Referenced names.
  */
 const collectScriptReferences = scriptGroups => {
     const variables = new Set();
@@ -258,6 +253,18 @@ const normalizeBroadcasts = (definitions, referencedNames) => {
     return Array.from(normalized.values());
 };
 
+/**
+ * Normalize a combined AI project response.
+ *
+ * costumes: costumes for the currently selected sprite
+ * sprites: new sprites, each with one or more SVG costumes
+ * backdrops: new stage backdrops
+ * variables: global stage variables used by generated scripts
+ * broadcasts: global broadcast messages used by generated scripts
+ * scripts: Scratch block scripts for the currently selected target
+ * @param {object|string} input Project specification object or JSON string.
+ * @returns {object} Normalized project specification.
+ */
 /**
  * Normalize a combined AI project response.
  *
