@@ -54,8 +54,12 @@ const int = (name, v) => [
 const txt = (name, v) => `<value name="${name}"><shadow type="text"><field name="TEXT">${v}</field></shadow></value>`;
 const VAR = '<field name="VARIABLE" variabletype="">my variable</field>';
 const LIST = '<field name="LIST" variabletype="list">my list</field>';
+const BROADCAST = '<field name="BROADCAST_OPTION" variabletype="broadcast_msg">message1</field>';
 /* eslint-enable max-len */
 const FALLBACK_TEMPLATES = `<xml><category>
+<block type="event_broadcast">${BROADCAST}</block>
+<block type="event_broadcastandwait">${BROADCAST}</block>
+<block type="event_whenbroadcastreceived">${BROADCAST}</block>
 <block type="data_variable">${VAR}</block>
 <block type="data_setvariableto">${VAR}${txt('VALUE', '0')}</block>
 <block type="data_changevariableby">${VAR}${num('VALUE', '1')}</block>
