@@ -1,7 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {normalizeProjectSpec, validateSvg} from '../src/lib/ai/project-spec.js';
+import {
+    normalizeProjectSpec,
+    validateSvg,
+    SVG_ALLOWED_ELEMENTS
+} from '../src/lib/ai/project-spec.js';
+import {buildSystemMessage} from '../src/lib/ai/prompts.js';
 
 const svg = color => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
     '<circle cx="50" cy="50" r="40" fill="' + color + '"/>' +
@@ -124,4 +129,67 @@ test('project spec rejects malformed input objects instead of treating them as b
             inputs: {FROM: {shadow: 'math_number'}}
         }]]
     }), /入力が正しくありません/);
+});
+
+
+test('SVG validation rejects text elements and the prompt uses the exact allow-list', () => {
+    assert.throws(() => validateSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><text x="1" y="5">Hi</text></svg>'
+    ), /text/);
+    assert.throws(() => validateSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><tspan>Hi</tspan></svg>'
+    ), /tspan/);
+
+    const prompt = buildSystemMessage({blockCatalog: '', projectText: ''});
+    SVG_ALLOWED_ELEMENTS.forEach(element => assert.ok(prompt.includes(element)));
+    assert.match(prompt, /<text> と <tspan> は禁止/);
+});
+
+test('project spec keeps variable and broadcast declarations aligned with block fields', () => {
+    const project = normalizeProjectSpec({
+        variables: [{name: 'スコア', initialValue: 3}],
+        broadcasts: ['ゲームオーバー'],
+        scripts: [[
+            {
+                opcode: 'data_changevariableby',
+                fields: {VARIABLE: 'スコア'},
+                inputs: {VALUE: 1}
+            },
+            {
+                opcode: 'event_broadcast',
+                fields: {BROADCAST_OPTION: 'ゲームオーバー'}
+            }
+        ]]
+    });
+
+    assert.deepEqual(project.variables, [{name: 'スコア', initialValue: 3}]);
+    assert.deepEqual(project.broadcasts, ['ゲームオーバー']);
+});
+
+test('project spec infers missing variable and broadcast declarations from references', () => {
+    const project = normalizeProjectSpec({
+        scripts: [[
+            {
+                opcode: 'data_setvariableto',
+                fields: {VARIABLE: 'りんごの速さ'},
+                inputs: {VALUE: 4}
+            },
+            {
+                opcode: 'event_broadcast',
+                fields: {BROADCAST_OPTION: 'ゲームオーバー'}
+            }
+        ]]
+    });
+
+    assert.deepEqual(project.variables, [{name: 'りんごの速さ', initialValue: 0}]);
+    assert.deepEqual(project.broadcasts, ['ゲームオーバー']);
+});
+
+test('project spec rejects variable and broadcast fields placed in inputs', () => {
+    assert.throws(() => normalizeProjectSpec({
+        scripts: [[{
+            opcode: 'data_setvariableto',
+            inputs: {VARIABLE: 'スコア', VALUE: 0}
+        }]]
+    }), /fieldsに指定/);
 });
