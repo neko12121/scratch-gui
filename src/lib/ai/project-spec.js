@@ -7,15 +7,17 @@ const MAX_SPRITES = 8;
 const MAX_BACKDROPS = 4;
 const MAX_TOTAL_ASSETS = 24;
 
-const ALLOWED_TAGS = new Set([
+const SVG_ALLOWED_ELEMENTS = Object.freeze([
     'svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line'
 ]);
-const ALLOWED_ATTRIBUTES = new Set([
+const SVG_ALLOWED_ATTRIBUTES = Object.freeze([
     'xmlns', 'viewBox', 'width', 'height', 'fill', 'stroke', 'stroke-width',
     'stroke-linecap', 'stroke-linejoin', 'fill-rule', 'opacity', 'cx', 'cy',
     'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'd', 'points',
     'transform', 'version', 'preserveAspectRatio'
 ]);
+const ALLOWED_TAGS = new Set(SVG_ALLOWED_ELEMENTS);
+const ALLOWED_ATTRIBUTES = new Set(SVG_ALLOWED_ATTRIBUTES);
 
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -94,13 +96,26 @@ const STATEMENT_INPUT = /^SUBSTACK\d*$/;
 const isPrimitiveInput = value =>
     typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 
+const FIELD_ONLY_INPUT_NAMES = new Set([
+    'VARIABLE', 'LIST', 'BROADCAST_OPTION'
+]);
+
 const normalizeBlock = block => {
     if (!isObject(block) || typeof block.opcode !== 'string' || !block.opcode) {
         throw new Error('scripts内に正しくないブロックがあります。');
     }
-    if (typeof block.fields !== 'undefined' && !isObject(block.fields)) {
+
+    const rawFields = typeof block.fields === 'undefined' ? {} : block.fields;
+    if (!isObject(rawFields)) {
         throw new Error('ブロックのfieldsはオブジェクトにしてください。');
     }
+    const fields = {};
+    Object.keys(rawFields).forEach(key => {
+        if (!isPrimitiveInput(rawFields[key])) {
+            throw new Error(`ブロックのfield「${key}」は文字列または数値にしてください。`);
+        }
+        fields[key] = rawFields[key];
+    });
 
     const inputs = typeof block.inputs === 'undefined' ? {} : block.inputs;
     if (!isObject(inputs)) throw new Error('ブロックのinputsはオブジェクトにしてください。');
@@ -108,6 +123,10 @@ const normalizeBlock = block => {
     const normalizedInputs = {};
     Object.keys(inputs).forEach(key => {
         const value = inputs[key];
+
+        if (FIELD_ONLY_INPUT_NAMES.has(key)) {
+            throw new Error(`「${block.opcode}」の「${key}」はinputsではなくfieldsに指定してください。`);
+        }
 
         if (STATEMENT_INPUT.test(key)) {
             const stack = Array.isArray(value) ? value : [value];
@@ -143,7 +162,7 @@ const normalizeBlock = block => {
         normalizedInputs[key] = value;
     });
 
-    return {...block, inputs: normalizedInputs};
+    return {...block, fields: fields, inputs: normalizedInputs};
 };
 
 const normalizeScripts = scripts => {
@@ -160,6 +179,93 @@ const normalizeScripts = scripts => {
  * costumes: costumes for the currently selected sprite
  * sprites: new sprites, each with one or more SVG costumes
  * backdrops: new stage backdrops
+ * scripts: Scratch block scripts for the currently selected target
+ * @param {object|string} input Project specification object or JSON string.
+ * @returns {object} Normalized project specification.
+ */
+const collectScriptReferences = scriptGroups => {
+    const variables = new Set();
+    const broadcasts = new Set();
+
+    const visitBlock = block => {
+        if (!isObject(block)) return;
+        const fields = isObject(block.fields) ? block.fields : {};
+        if (typeof fields.VARIABLE === 'string' && fields.VARIABLE.trim()) {
+            variables.add(fields.VARIABLE.trim());
+        }
+        if (typeof fields.BROADCAST_OPTION === 'string' && fields.BROADCAST_OPTION.trim()) {
+            broadcasts.add(fields.BROADCAST_OPTION.trim());
+        }
+        const inputs = isObject(block.inputs) ? block.inputs : {};
+        Object.keys(inputs).forEach(key => {
+            const value = inputs[key];
+            if (Array.isArray(value)) value.forEach(visitBlock);
+            else if (isObject(value) && typeof value.opcode === 'string') visitBlock(value);
+        });
+    };
+
+    scriptGroups.forEach(scripts => scripts.forEach(script => script.forEach(visitBlock)));
+    return {variables: Array.from(variables), broadcasts: Array.from(broadcasts)};
+};
+
+const normalizeVariables = (definitions, referencedNames) => {
+    if (typeof definitions !== 'undefined' && !Array.isArray(definitions)) {
+        throw new Error('variablesは配列で指定してください。');
+    }
+    const normalized = new Map();
+    (definitions || []).forEach(definition => {
+        const nameValue = typeof definition === 'string' ? definition :
+            (isObject(definition) ? definition.name : null);
+        if (typeof nameValue !== 'string' || !nameValue.trim()) {
+            throw new Error('variablesには空でないnameが必要です。');
+        }
+        const name = nameValue.trim().slice(0, 80);
+        const initialValue = isObject(definition) &&
+            Object.prototype.hasOwnProperty.call(definition, 'initialValue') ?
+            definition.initialValue : 0;
+        if (!isPrimitiveInput(initialValue)) {
+            throw new Error(`変数「${name}」のinitialValueは文字列または数値にしてください。`);
+        }
+        const key = name.toLocaleLowerCase();
+        if (!normalized.has(key)) normalized.set(key, {name: name, initialValue: initialValue});
+    });
+    referencedNames.forEach(name => {
+        const key = name.toLocaleLowerCase();
+        if (!normalized.has(key)) normalized.set(key, {name: name.slice(0, 80), initialValue: 0});
+    });
+    return Array.from(normalized.values());
+};
+
+const normalizeBroadcasts = (definitions, referencedNames) => {
+    if (typeof definitions !== 'undefined' && !Array.isArray(definitions)) {
+        throw new Error('broadcastsは配列で指定してください。');
+    }
+    const normalized = new Map();
+    (definitions || []).forEach(definition => {
+        const nameValue = typeof definition === 'string' ? definition :
+            (isObject(definition) ? definition.name : null);
+        if (typeof nameValue !== 'string' || !nameValue.trim()) {
+            throw new Error('broadcastsには空でない名前が必要です。');
+        }
+        const name = nameValue.trim().slice(0, 80);
+        const key = name.toLocaleLowerCase();
+        if (!normalized.has(key)) normalized.set(key, name);
+    });
+    referencedNames.forEach(name => {
+        const key = name.toLocaleLowerCase();
+        if (!normalized.has(key)) normalized.set(key, name.slice(0, 80));
+    });
+    return Array.from(normalized.values());
+};
+
+/**
+ * Normalize a combined AI project response.
+ *
+ * costumes: costumes for the currently selected sprite
+ * sprites: new sprites, each with one or more SVG costumes
+ * backdrops: new stage backdrops
+ * variables: global stage variables used by generated scripts
+ * broadcasts: global broadcast messages used by generated scripts
  * scripts: Scratch block scripts for the currently selected target
  * @param {object|string} input Project specification object or JSON string.
  * @returns {object} Normalized project specification.
@@ -209,6 +315,13 @@ const normalizeProjectSpec = input => {
     const backdrops = rawBackdrops.map((asset, index) =>
         normalizeAsset(asset, `AI背景${index + 1}`)
     );
+
+    const scripts = normalizeScripts(data.scripts);
+    const scriptGroups = [scripts].concat(sprites.map(sprite => sprite.scripts));
+    const references = collectScriptReferences(scriptGroups);
+    const variables = normalizeVariables(data.variables, references.variables);
+    const broadcasts = normalizeBroadcasts(data.broadcasts, references.broadcasts);
+
     const assetCount = costumes.length + backdrops.length +
         sprites.reduce((sum, sprite) => sum + sprite.costumes.length, 0);
     const totalSvgLength = costumes.concat(backdrops).reduce((sum, asset) =>
@@ -219,14 +332,16 @@ const normalizeProjectSpec = input => {
         throw new Error('素材の合計サイズまたは個数が上限を超えています。');
     }
 
-    const scripts = normalizeScripts(data.scripts);
-    if (assetCount === 0 && scripts.length === 0) {
+    if (assetCount === 0 && scripts.length === 0 &&
+        sprites.every(sprite => sprite.scripts.length === 0)) {
         throw new Error('追加する素材またはブロックがありません。');
     }
-    return {costumes, sprites, backdrops, scripts};
+    return {costumes, sprites, backdrops, variables, broadcasts, scripts};
 };
 
 export {
     normalizeProjectSpec,
-    validateSvg
+    validateSvg,
+    SVG_ALLOWED_ELEMENTS,
+    SVG_ALLOWED_ATTRIBUTES
 };
