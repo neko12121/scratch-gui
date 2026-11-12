@@ -8,7 +8,7 @@ import AISidebarComponent from '../components/ai-sidebar/ai-sidebar.jsx';
 import AddonHooks from '../addons/hooks.js';
 import {chat, loadSettings, saveSettings} from '../lib/ai/ai-client.js';
 import {targetToText} from '../lib/ai/script-to-text.js';
-import {describeToolbox, insertProgram} from '../lib/ai/json-to-blocks.js';
+import {describeToolbox, insertProgram, programToXML} from '../lib/ai/json-to-blocks.js';
 import {buildSystemMessage} from '../lib/ai/prompts.js';
 import {costumeUpload} from '../lib/file-uploader.js';
 import {normalizeProjectSpec, validateSvg} from '../lib/ai/project-spec.js';
@@ -202,11 +202,57 @@ class AISidebar extends React.Component {
             this.setState({error: `コスチュームを追加できませんでした: ${e.message}`});
         }
     }
+    ensureProjectDefinitions (project) {
+        const vm = this.props.vm;
+        const stageTarget = vm.runtime.getTargetForStage();
+        if (!stageTarget) throw new Error('ステージを取得できないため変数を作成できません。');
+
+        let idCounter = 0;
+        const createId = prefix => {
+            let id = `ai_${prefix}_${Date.now()}_${idCounter++}`;
+            while (stageTarget.lookupVariableById(id)) {
+                id = `ai_${prefix}_${Date.now()}_${idCounter++}`;
+            }
+            return id;
+        };
+
+        let createdVariables = 0;
+        let createdBroadcasts = 0;
+
+        project.variables.forEach(definition => {
+            const existing = stageTarget.lookupVariableByNameAndType(definition.name, '');
+            if (existing) return;
+            const variable = stageTarget.lookupOrCreateVariable(
+                createId('variable'),
+                definition.name
+            );
+            variable.value = definition.initialValue;
+            createdVariables++;
+        });
+
+        project.broadcasts.forEach(name => {
+            const existing = stageTarget.lookupVariableByNameAndType(name, 'broadcast_msg');
+            if (existing) return;
+            stageTarget.createVariable(createId('broadcast'), name, 'broadcast_msg', false);
+            createdBroadcasts++;
+        });
+
+        if (createdVariables || createdBroadcasts) vm.refreshWorkspace();
+        return {createdVariables, createdBroadcasts};
+    }
     async handleApplyProject (input) {
         if (this.applyingProject) return;
         this.applyingProject = true;
         const vm = this.props.vm;
-        const counts = {costumes: 0, spriteCostumes: 0, sprites: 0, backdrops: 0, scripts: 0};
+        const counts = {
+            costumes: 0,
+            spriteCostumes: 0,
+            sprites: 0,
+            backdrops: 0,
+            scripts: 0,
+            variables: 0,
+            broadcasts: 0
+        };
         const warnings = [];
         try {
             const project = normalizeProjectSpec(input);
@@ -226,6 +272,17 @@ class AISidebar extends React.Component {
                 this.props.onActivateBlocksTab();
                 throw new Error('コードエディターを開いてから、もう一度「素材とブロックを追加」を押してください。素材はまだ追加していません。');
             }
+
+            // Validate every target's scripts before adding any project assets.
+            const scriptGroupsToValidate = [project.scripts].concat(
+                project.sprites.map(sprite => sprite.scripts)
+            );
+            scriptGroupsToValidate.filter(scripts => scripts.length).forEach((scripts, index) => {
+                const result = programToXML({mode: 'add', scripts: scripts}, this.props.toolboxXML);
+                if (result.warnings.length) {
+                    throw new Error(`スクリプト${index + 1}のブロック形式が正しくありません: ${result.warnings.join(' / ')}`);
+                }
+            });
 
             for (const item of project.costumes) {
                 const costume = await this.createCostumeAsset(item.svg, item.name);
@@ -278,6 +335,10 @@ class AISidebar extends React.Component {
                 counts.backdrops++;
             }
 
+            const definitionCounts = this.ensureProjectDefinitions(project);
+            counts.variables = definitionCounts.createdVariables;
+            counts.broadcasts = definitionCounts.createdBroadcasts;
+
             const scriptGroups = [];
             if (project.scripts.length) {
                 scriptGroups.push({
@@ -320,7 +381,8 @@ class AISidebar extends React.Component {
             const notice = [
                 `追加完了：既存スプライトのコスチューム ${counts.costumes}個、`,
                 `新規スプライト ${counts.sprites}個（専用コスチューム ${counts.spriteCostumes}個）、`,
-                `背景 ${counts.backdrops}個、スクリプト ${counts.scripts}個。`,
+                `背景 ${counts.backdrops}個、変数 ${counts.variables}個、`,
+                `メッセージ ${counts.broadcasts}個、スクリプト ${counts.scripts}個。`,
                 warningText
             ].join('');
             this.setState({error: '', notice: notice});
@@ -329,6 +391,7 @@ class AISidebar extends React.Component {
                 `追加中にエラーが発生しました: ${e.message} （追加済み: `,
                 `既存コスチューム ${counts.costumes}個、新規スプライト ${counts.sprites}個、`,
                 `専用コスチューム ${counts.spriteCostumes}個、背景 ${counts.backdrops}個、`,
+                `変数 ${counts.variables}個、メッセージ ${counts.broadcasts}個、`,
                 `スクリプト ${counts.scripts}個）`
             ].join('');
             this.setState({error: error});
