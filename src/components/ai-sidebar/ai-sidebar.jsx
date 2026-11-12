@@ -25,7 +25,9 @@ const GAME_PROMPT = [
     'costumesに選択中スプライトの素材、spritesに新規スプライトと各2個程度のcostumes、',
     'backdropsに背景、scriptsに選択中スプライトのブロックを入れてください。',
     '新規スプライトにも専用scriptsを追加し、ブロック仕様一覧に厳密に従ってください。',
-    '変数が必要なら最小限にしてください。'
+    '使う変数はvariablesにnameとinitialValueを定義し、使うメッセージはbroadcastsに定義してください。',
+    '変数やメッセージなどの選択欄はfields、値入力はinputsに指定してください。',
+    'SVGではtextとtspanを絶対に使わないでください。'
 ].join(' ');
 
 
