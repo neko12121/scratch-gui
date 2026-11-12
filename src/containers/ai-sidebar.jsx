@@ -237,7 +237,10 @@ class AISidebar extends React.Component {
             createdBroadcasts++;
         });
 
-        if (createdVariables || createdBroadcasts) vm.refreshWorkspace();
+        if (createdVariables || createdBroadcasts) {
+            vm.refreshWorkspace();
+            vm.runtime.emitProjectChanged();
+        }
         return {createdVariables, createdBroadcasts};
     }
     async handleApplyProject (input) {
