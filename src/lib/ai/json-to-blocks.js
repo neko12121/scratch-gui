@@ -311,6 +311,9 @@ const programToXML = (program, toolboxXML) => {
  */
 const insertProgram = (ScratchBlocks, workspace, program, toolboxXML) => {
     const {xml, warnings} = programToXML(program, toolboxXML);
+    if (warnings.length) {
+        throw new Error(`ブロックJSONに不整合があります。追加前に修正してください:\n${warnings.join('\n')}`);
+    }
     const dom = ScratchBlocks.Xml.textToDom(xml);
 
     ScratchBlocks.Events.setGroup(true);
