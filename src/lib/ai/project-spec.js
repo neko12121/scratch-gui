@@ -265,18 +265,6 @@ const normalizeBroadcasts = (definitions, referencedNames) => {
  * @param {object|string} input Project specification object or JSON string.
  * @returns {object} Normalized project specification.
  */
-/**
- * Normalize a combined AI project response.
- *
- * costumes: costumes for the currently selected sprite
- * sprites: new sprites, each with one or more SVG costumes
- * backdrops: new stage backdrops
- * variables: global stage variables used by generated scripts
- * broadcasts: global broadcast messages used by generated scripts
- * scripts: Scratch block scripts for the currently selected target
- * @param {object|string} input Project specification object or JSON string.
- * @returns {object} Normalized project specification.
- */
 const normalizeProjectSpec = input => {
     let data = input;
     if (typeof data === 'string') {
