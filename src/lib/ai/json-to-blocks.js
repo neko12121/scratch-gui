@@ -57,6 +57,9 @@ const LIST = '<field name="LIST" variabletype="list">my list</field>';
 const BROADCAST = '<field name="BROADCAST_OPTION" variabletype="broadcast_msg">message1</field>';
 /* eslint-enable max-len */
 const FALLBACK_TEMPLATES = `<xml><category>
+<block type="control_forever"><statement name="SUBSTACK"></statement></block>
+<block type="looks_switchbackdropto"><value name="BACKDROP"><shadow type="looks_backdrops"><field name="BACKDROP">BACKDROP1</field></shadow></value></block>
+<block type="looks_backdrops"><field name="BACKDROP">BACKDROP1</field></block>
 <block type="event_broadcast">${BROADCAST}</block>
 <block type="event_broadcastandwait">${BROADCAST}</block>
 <block type="event_whenbroadcastreceived">${BROADCAST}</block>
@@ -79,6 +82,40 @@ const FALLBACK_TEMPLATES = `<xml><category>
 <block type="data_hidelist">${LIST}</block>
 </category></xml>`;
 
+// A toolbox block can omit inputs or fields that are defined by the block
+// itself. Merge missing structure from fallback definitions instead of keeping
+// the first toolbox entry unchanged.
+const templateChildKey = child => {
+    const name = child.getAttribute('name');
+    if (child.nodeName === 'field' || child.nodeName === 'value' ||
+        child.nodeName === 'statement') {
+        return `${child.nodeName}:${name}`;
+    }
+    if (child.nodeName === 'shadow' || child.nodeName === 'block') {
+        return `${child.nodeName}:${child.getAttribute('type')}`;
+    }
+    return null;
+};
+
+const mergeTemplateChildren = (target, source) => {
+    for (const sourceChild of Array.from(source.children)) {
+        const key = templateChildKey(sourceChild);
+        if (!key) continue;
+        const targetChild = Array.from(target.children)
+            .find(child => templateChildKey(child) === key);
+        if (targetChild) {
+            if (sourceChild.nodeName !== 'field') {
+                mergeTemplateChildren(targetChild, sourceChild);
+            }
+            continue;
+        }
+        const ownerDocument = target.ownerDocument;
+        const copy = ownerDocument && typeof ownerDocument.importNode === 'function' ?
+            ownerDocument.importNode(sourceChild, true) : sourceChild.cloneNode(true);
+        target.appendChild(copy);
+    }
+};
+
 let cachedToolboxXML = null;
 let cachedTemplates = null;
 
@@ -93,7 +130,12 @@ const parseToolbox = toolboxXML => {
             // Only top-level toolbox entries (direct children of <category>)
             if (el.parentNode && el.parentNode.nodeName !== 'category') continue;
             const type = el.getAttribute('type');
-            if (type && !templates[type]) templates[type] = el;
+            if (!type) continue;
+            if (!templates[type]) {
+                templates[type] = el;
+            } else {
+                mergeTemplateChildren(templates[type], el);
+            }
         }
     };
     try {
@@ -350,6 +392,7 @@ const insertProgram = (ScratchBlocks, workspace, program, toolboxXML) => {
 
 export {
     describeToolbox,
+    mergeTemplateChildren,
     normalizeProgram,
     programToXML,
     insertProgram
