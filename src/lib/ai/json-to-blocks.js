@@ -58,7 +58,13 @@ const BROADCAST = '<field name="BROADCAST_OPTION" variabletype="broadcast_msg">m
 /* eslint-enable max-len */
 const FALLBACK_TEMPLATES = `<xml><category>
 <block type="control_forever"><statement name="SUBSTACK"></statement></block>
-<block type="looks_switchbackdropto"><value name="BACKDROP"><shadow type="looks_backdrops"><field name="BACKDROP">BACKDROP1</field></shadow></value></block>
+<block type="looks_switchbackdropto">
+  <value name="BACKDROP">
+    <shadow type="looks_backdrops">
+      <field name="BACKDROP">BACKDROP1</field>
+    </shadow>
+  </value>
+</block>
 <block type="looks_backdrops"><field name="BACKDROP">BACKDROP1</field></block>
 <block type="event_broadcast">${BROADCAST}</block>
 <block type="event_broadcastandwait">${BROADCAST}</block>
@@ -131,10 +137,10 @@ const parseToolbox = toolboxXML => {
             if (el.parentNode && el.parentNode.nodeName !== 'category') continue;
             const type = el.getAttribute('type');
             if (!type) continue;
-            if (!templates[type]) {
-                templates[type] = el;
-            } else {
+            if (templates[type]) {
                 mergeTemplateChildren(templates[type], el);
+            } else {
+                templates[type] = el;
             }
         }
     };
