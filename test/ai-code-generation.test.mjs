@@ -2,8 +2,39 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 import {buildSystemMessage} from '../src/lib/ai/prompts.js';
-import {normalizeProgram} from '../src/lib/ai/json-to-blocks.js';
+import {
+    mergeTemplateChildren,
+    normalizeProgram
+} from '../src/lib/ai/json-to-blocks.js';
 import {splitBareJsonSegments} from '../src/lib/ai/response-parser.js';
+
+const makeXmlNode = (nodeName, attributes = {}, children = []) => {
+    const node = {
+        nodeName,
+        attributes,
+        children: [],
+        ownerDocument: null,
+        getAttribute (name) {
+            return Object.prototype.hasOwnProperty.call(this.attributes, name) ?
+                this.attributes[name] : null;
+        },
+        appendChild (child) {
+            this.children.push(child);
+            return child;
+        },
+        cloneNode (deep) {
+            const clones = deep ? this.children.map(child => child.cloneNode(true)) : [];
+            return makeXmlNode(this.nodeName, {...this.attributes}, clones);
+        }
+    };
+    node.ownerDocument = {
+        importNode (source, deep) {
+            return source.cloneNode(deep);
+        }
+    };
+    children.forEach(child => node.appendChild(child));
+    return node;
+};
 
 test('AI prompt requires the supported Scratch block JSON format', () => {
     const message = buildSystemMessage({
@@ -21,6 +52,41 @@ test('AI prompt requires the supported Scratch block JSON format', () => {
     assert.match(message, /shadow\/value オブジェクトを作らない/);
     assert.ok(message.includes('motion_movesteps(STEPS:value<math_number NUM="10">)'));
     assert.ok(message.includes('[script 1] event_whenflagclicked'));
+});
+
+test('toolbox templates merge missing stack, value, and field definitions', () => {
+    const forever = makeXmlNode('block', {type: 'control_forever'});
+    const foreverFallback = makeXmlNode('block', {type: 'control_forever'}, [
+        makeXmlNode('statement', {name: 'SUBSTACK'})
+    ]);
+    mergeTemplateChildren(forever, foreverFallback);
+    assert.equal(forever.children[0].nodeName, 'statement');
+    assert.equal(forever.children[0].getAttribute('name'), 'SUBSTACK');
+
+    const backdrop = makeXmlNode('block', {type: 'looks_switchbackdropto'}, [
+        makeXmlNode('value', {name: 'BACKDROP'}, [
+            makeXmlNode('shadow', {type: 'looks_backdrops'})
+        ])
+    ]);
+    const backdropFallback = makeXmlNode('block', {type: 'looks_switchbackdropto'}, [
+        makeXmlNode('value', {name: 'BACKDROP'}, [
+            makeXmlNode('shadow', {type: 'looks_backdrops'}, [
+                makeXmlNode('field', {name: 'BACKDROP'})
+            ])
+        ])
+    ]);
+    mergeTemplateChildren(backdrop, backdropFallback);
+    assert.equal(backdrop.children.length, 1);
+    assert.equal(backdrop.children[0].children.length, 1);
+    assert.equal(backdrop.children[0].children[0].children[0].getAttribute('name'), 'BACKDROP');
+
+    const broadcast = makeXmlNode('block', {type: 'event_whenbroadcastreceived'});
+    const broadcastFallback = makeXmlNode('block', {type: 'event_whenbroadcastreceived'}, [
+        makeXmlNode('field', {name: 'BROADCAST_OPTION', variabletype: 'broadcast_msg'})
+    ]);
+    mergeTemplateChildren(broadcast, broadcastFallback);
+    assert.equal(broadcast.children[0].getAttribute('name'), 'BROADCAST_OPTION');
+    assert.equal(broadcast.children[0].getAttribute('variabletype'), 'broadcast_msg');
 });
 
 test('normalizeProgram parses a JSON string and defaults to add mode', () => {
