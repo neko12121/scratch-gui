@@ -403,6 +403,7 @@ const insertProgram = (ScratchBlocks, workspace, program, toolboxXML) => {
 
 export {
     describeToolbox,
+    FALLBACK_TEMPLATES,
     mergeTemplateChildren,
     normalizeProgram,
     programToXML,
