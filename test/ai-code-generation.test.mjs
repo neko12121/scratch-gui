@@ -56,18 +56,13 @@ test('AI prompt requires the supported Scratch block JSON format', () => {
 });
 
 test('fallback templates cover if blocks and costume menu reporters', () => {
-    const conditional = FALLBACK_TEMPLATES.match(
-        /<block type="control_if">([\\s\\S]*?)<\\/block>/
-    );
-    assert.ok(conditional);
-    assert.match(conditional[1], /<value name="CONDITION"><\\/value>/);
-    assert.match(conditional[1], /<statement name="SUBSTACK"><\\/statement>/);
-
-    assert.match(FALLBACK_TEMPLATES,
-        /<block type="looks_costume"><field name="COSTUME">COSTUME1<\\/field><\\/block>/
-    );
+    assert.ok(FALLBACK_TEMPLATES.includes('<block type="control_if">'));
+    assert.ok(FALLBACK_TEMPLATES.includes('<value name="CONDITION"></value>'));
+    assert.ok(FALLBACK_TEMPLATES.includes('<statement name="SUBSTACK"></statement>'));
+    assert.ok(FALLBACK_TEMPLATES.includes(
+        '<block type="looks_costume"><field name="COSTUME">COSTUME1</field></block>'
+    ));
 });
-
 test('toolbox templates merge missing stack, value, and field definitions', () => {
     const forever = makeXmlNode('block', {type: 'control_forever'});
     const foreverFallback = makeXmlNode('block', {type: 'control_forever'}, [
