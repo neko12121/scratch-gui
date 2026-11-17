@@ -57,7 +57,12 @@ const LIST = '<field name="LIST" variabletype="list">my list</field>';
 const BROADCAST = '<field name="BROADCAST_OPTION" variabletype="broadcast_msg">message1</field>';
 /* eslint-enable max-len */
 const FALLBACK_TEMPLATES = `<xml><category>
+<block type="control_if">
+  <value name="CONDITION"></value>
+  <statement name="SUBSTACK"></statement>
+</block>
 <block type="control_forever"><statement name="SUBSTACK"></statement></block>
+<block type="looks_costume"><field name="COSTUME">COSTUME1</field></block>
 <block type="looks_switchbackdropto">
   <value name="BACKDROP">
     <shadow type="looks_backdrops">
