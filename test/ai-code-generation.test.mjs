@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {buildSystemMessage} from '../src/lib/ai/prompts.js';
 import {
+    FALLBACK_TEMPLATES,
     mergeTemplateChildren,
     normalizeProgram
 } from '../src/lib/ai/json-to-blocks.js';
@@ -52,6 +53,19 @@ test('AI prompt requires the supported Scratch block JSON format', () => {
     assert.match(message, /shadow\/value オブジェクトを作らない/);
     assert.ok(message.includes('motion_movesteps(STEPS:value<math_number NUM="10">)'));
     assert.ok(message.includes('[script 1] event_whenflagclicked'));
+});
+
+test('fallback templates cover if blocks and costume menu reporters', () => {
+    const conditional = FALLBACK_TEMPLATES.match(
+        /<block type="control_if">([\\s\\S]*?)<\\/block>/
+    );
+    assert.ok(conditional);
+    assert.match(conditional[1], /<value name="CONDITION"><\\/value>/);
+    assert.match(conditional[1], /<statement name="SUBSTACK"><\\/statement>/);
+
+    assert.match(FALLBACK_TEMPLATES,
+        /<block type="looks_costume"><field name="COSTUME">COSTUME1<\\/field><\\/block>/
+    );
 });
 
 test('toolbox templates merge missing stack, value, and field definitions', () => {
